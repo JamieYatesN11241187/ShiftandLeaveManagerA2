@@ -8,7 +8,7 @@ const {
   updateLeaveRequest,
   deleteLeaveRequest,
 } = require('../controllers/leaveController'); 
-
+// Adjust the path as necessary
 const { expect } = chai;
 
 describe('Leave Request Controller', () => {
@@ -85,6 +85,7 @@ describe('Leave Request Controller', () => {
     });
   });
 
+  
   describe('getLeaveRequests', () => {
     it('should return all leave requests', async () => {
       const requests = [
