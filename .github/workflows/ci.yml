@@ -50,13 +50,13 @@ jobs:
        yarn install
       
     # Install dependencies for frontend
-    - name: Install Frontend Dependencies
+    - name: Install Frontend Dependencies and Build
       working-directory: ./frontend
       run: |
         df -h
         sudo rm -rf ./build
-        yarn install
-        yarn run build
+        npm install --legacy-peer-deps 
+        npm run build
 
 
     # Run backend test
