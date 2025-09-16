@@ -98,75 +98,81 @@ const Calendar = () => {
     }, [user, setUser]);
 
     // Calendar configuration
+    /*    const config = {
+            viewType: "Week",
+            durationBarVisible: false,
+            timeRangeSelectedHandling: "Enabled",
+       
+               // Right-click context menu
+               contextMenu: new DayPilot.Menu({
+                   items: [
+                       {
+                           text: "Delete",
+                           onClick: async args => {
+                               const confirmed = window.confirm("Are you sure you want to delete this shift?");
+                               if (!confirmed) return;
+                               await deleteShift(args.source.data.id);
+                           },
+                       },
+                       { text: "-" },
+                       {
+                           text: "Edit...",
+                           onClick: async args => {
+                               await editShift(args.source);
+                           }
+                       }
+                   ]
+               })
+        }; */
+
+    // Calendar configuration
     const config = {
         viewType: "Week",
         durationBarVisible: false,
         timeRangeSelectedHandling: "Enabled",
 
-        // Triggered when an event is clicked
-        onEventClick: async args => {
-            if (user && ["manager"].includes(user.role)) {
-                await editShift(args.e);
-                await deleteShift(args.e);
-            } else {
-                alert("You do not have permission to edit shifts.");
-            }
-        },
-
         // Right-click context menu
         contextMenu: new DayPilot.Menu({
-            items: [
-                {
-                    text: "Delete",
-                    onClick: async args => {
-                        const confirmed = window.confirm("Are you sure you want to delete this shift?");
-                        if (!confirmed) return;
-                        await deleteShift(args.source.data.id);
-                    },
-                },
-                { text: "-" },
-                {
-                    text: "Edit...",
-                    onClick: async args => {
-                        await editShift(args.source);
-                    }
+            items: (() => {
+                if (user?.role === "manager") {
+                    return [
+                        {
+                            text: "Delete",
+                            onClick: async args => {
+                                const confirmed = window.confirm("Are you sure you want to delete this shift?");
+                                if (!confirmed) return;
+                                await deleteShift(args.source.data.id);
+                            },
+                        },
+                        { text: "-" },
+                        {
+                            text: "Edit...",
+                            onClick: async args => {
+                                await editShift(args.source);
+                            }
+                        }
+                    ];
+                } else if (user?.role === "worker") {
+                    return [
+                        {
+                            text: "Drop Shift",
+                            onClick: async args => {
+                                const confirmed = window.confirm("Do you want to drop this shift?");
+                                if (!confirmed) return;
+                                await dropShift(args.source.data.id);
+                            }
+                        }
+                    ];
+                } else {
+                    return []; // no menu for other roles
                 }
-            ]
-        }),
-
-        // Custom rendering logic for event elements
-        onBeforeEventRender: args => {
-            args.data.areas = [
-                {
-                    top: 3,
-                    right: 3,
-                    width: 20,
-                    height: 20,
-                    symbol: "icons/daypilot.svg#minichevron-down-2",
-                    fontColor: "#fff",
-                    toolTip: "Show context menu",
-                    action: "ContextMenu"
-                },
-                {
-                    top: 3,
-                    right: 25,
-                    width: 20,
-                    height: 20,
-                    symbol: "icons/daypilot.svg#x-circle",
-                    fontColor: "#fff",
-                    action: "None",
-                    toolTip: "Delete shift",
-                    onClick: async args => {
-                        calendar.shifts.remove(args.source);
-                    }
-                }
-            ];
-        }
+            })()
+        })
     };
 
     // Populate form with existing shift data for editing
     const editShift = async (e) => {
-        if (!user || user.role !== "manager") {
+        if (!user || user?.role !== "manager") {
             alert("You do not have permission to edit shifts.");
             return;
         }
@@ -183,7 +189,7 @@ const Calendar = () => {
 
     // Delete shift by ID
     const deleteShift = async (shiftId) => {
-        if (!user || user.role !== "manager") {
+        if (!user || user?.role !== "manager") {
             alert("You do not have permission to delete shifts.");
             return;
         }
@@ -199,6 +205,33 @@ const Calendar = () => {
         }
     };
 
+    const dropShift = async (shiftId) => {
+        if (!user || user?.role !== "worker") {
+            alert("Only workers can drop their own shifts.");
+            return;
+        }
+
+        try {
+            await axiosInstance.put(
+                `/api/shifts/${shiftId}/drop`,
+                {}, // no body needed
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+
+            alert("Shift dropped successfully.");
+            fetchShifts(); // Refresh calendar/shift list
+        } catch (error) {
+            console.error("Failed to drop shift:", error);
+
+            if (error.response && error.response.data && error.response.data.message) {
+                alert(error.response.data.message);
+            } else {
+                alert("Failed to drop shift. Please try again.");
+            }
+        }
+    };
+
+
     // Fetch all shifts from the backend and map to DayPilot format
     const fetchShifts = async () => {
         try {
@@ -212,7 +245,7 @@ const Calendar = () => {
 
             const mappedShifts = data.map(ev => ({
                 id: ev._id,
-                text: ev.person || "Untitled Shift",
+                text: ev.person || "Unassigned",
                 start: ev.start,
                 end: ev.end,
                 backColor: "#6aa84f"
@@ -304,7 +337,7 @@ const Calendar = () => {
             )}
 
             {/* Create Shift Modal */}
-            {formVisible && user && user.role === "manager" && (
+            {formVisible && user && user?.role === "manager" && (
                 <div style={overlayStyle}>
                     <div style={modalStyle}>
                         <h3 style={{ marginBottom: '1rem' }}>Create Time</h3>
@@ -389,7 +422,7 @@ const Calendar = () => {
                         }}
                     />
                     {/* Show Create Shift button for managers */}
-                    {user && user.role === "manager" && (
+                    {user && user?.role === "manager" && (
                         <button
                             style={{ ...buttonStyle, marginBottom: "1rem" }}
                             onClick={() => setFormVisible(true)}
