@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosConfig';
 
 const Register = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: '' });
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -13,7 +13,11 @@ const Register = () => {
       alert('Registration successful. Please log in.');
       navigate('/login');
     } catch (error) {
-      alert('Registration failed. Please try again.');
+      if (error.response && error.response.status === 400) {
+        alert(error.response.data.message); // shows "User already exists"
+      } else {
+        alert('Registration failed. Please try again.');
+      }
     }
   };
 
