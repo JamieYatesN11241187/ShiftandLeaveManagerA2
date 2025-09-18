@@ -1,4 +1,5 @@
 const Shift = require('../models/Shift'); // Import the Shift model
+const User = require("../models/User");
 
 // Create a new shift
 exports.createShift = async (req, res) => {
@@ -71,3 +72,36 @@ exports.deleteShift = async (req, res) => {
     res.status(500).json({ error: "Failed to delete shift" });
   }
 };
+
+
+
+
+// Drop shift (unassign it) – only by assigned user
+exports.dropShift = async (req, res) => {
+  try {
+    const shift = await Shift.findById(req.params.id);
+
+    if (!shift) {
+      return res.status(404).json({ message: "Shift not found." });
+    }
+
+    // Check if the logged-in user is assigned to this shift
+    if (!shift.person || shift.person.toString() !== req.user.name.toString()) {
+      return res.status(403).json({ message: "You can only drop your own shifts." });
+    }
+
+    // Drop the shift (mark as unassigned)
+    shift.person = "unassigned";
+    shift.userId = null;
+    await shift.save();
+
+    return res
+      .status(200)
+      .json({ message: "Shift dropped successfully and set as unassigned." });
+  } catch (error) {
+    console.error("Error dropping shift:", error.message);
+    res.status(500).json({ message: "Server error: " + error.message });
+  }
+};
+
+

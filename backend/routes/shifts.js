@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router(); // Create a new router instance
 
 const shiftController = require('../controllers/shiftController'); // Import the shift controller functions
+const { protect } = require('../middleware/authMiddleware');
 
 // Route to get all shifts
 router.get('/', shiftController.getShifts);
@@ -15,5 +16,7 @@ router.delete('/:id', shiftController.deleteShift);
 
 // Route to update a shift by ID
 router.put('/:id', shiftController.updateShift);
+// Drop shift - only for the assigned person
+router.put("/:id/drop", protect, shiftController.dropShift);
 
 module.exports = router; // Export the router to be used in the main app
