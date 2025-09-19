@@ -79,6 +79,7 @@ const Calendar = () => {
 
     const [editModalVisible, setEditModalVisible] = useState(false); // Show/hide edit modal
     const [editFormData, setEditFormData] = useState({ id: '', person: '', start: '', end: '' }); // Edit shift form state
+    const [swapRequests, setSwapRequests] = useState([]); // Shift swap requests for sidebar
 
     useEffect(() => {
         // Fetch user profile to prefill name and update role
@@ -97,33 +98,6 @@ const Calendar = () => {
         if (user && setUser) fetchProfile();
     }, [user, setUser]);
 
-    // Calendar configuration
-    /*    const config = {
-            viewType: "Week",
-            durationBarVisible: false,
-            timeRangeSelectedHandling: "Enabled",
-       
-               // Right-click context menu
-               contextMenu: new DayPilot.Menu({
-                   items: [
-                       {
-                           text: "Delete",
-                           onClick: async args => {
-                               const confirmed = window.confirm("Are you sure you want to delete this shift?");
-                               if (!confirmed) return;
-                               await deleteShift(args.source.data.id);
-                           },
-                       },
-                       { text: "-" },
-                       {
-                           text: "Edit...",
-                           onClick: async args => {
-                               await editShift(args.source);
-                           }
-                       }
-                   ]
-               })
-        }; */
 
     // Calendar configuration
     const config = {
@@ -169,6 +143,23 @@ const Calendar = () => {
                                 const confirmed = window.confirm("Do you want to drop this shift?");
                                 if (!confirmed) return;
                                 await dropShift(args.source.data.id);
+                            }
+                        },
+                        {
+                            text: "Request Swap",
+                            onClick: async args => {
+                                if (user?.role !== "worker") return;
+
+                                try {
+                                    await axiosInstance.post(
+                                        `/api/swaps/${args.source.data.id}`,
+                                        {}, // no toUser needed
+                                        { headers: { Authorization: `Bearer ${user.token}` } }
+                                    );
+                                    alert("Swap request sent.");
+                                } catch (error) {
+                                    alert(error.response?.data?.message || "Failed to request swap.");
+                                }
                             }
                         }
                     ];
@@ -262,7 +253,45 @@ const Calendar = () => {
         }
     };
 
+    // Fetch all swap requests
+    const fetchSwaps = async () => {
+        try {
+            const response = await axiosInstance.get('/api/swaps/me', {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+            setSwapRequests(response.data || []);
+        } catch (error) {
+            console.error("Failed to fetch swap requests:", error);
+            setSwapRequests([]);
+        }
+    };
 
+    // Approve/reject a swap
+    const approveSwap = async (shiftId, swapId, action) => {
+        try {
+            const response = await axiosInstance.put(
+                `/api/swaps/${shiftId}/approval`,
+                { swapId, action },
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+
+            const updatedShift = response.data.shift;
+
+            setShifts(prev =>
+                prev.map(s => (s.id === updatedShift._id ? {
+                    id: updatedShift._id,
+                    text: updatedShift.person || "Unassigned",
+                    start: updatedShift.start,
+                    end: updatedShift.end,
+                    backColor: "#6aa84f"
+                } : s))
+            );
+
+            fetchSwaps();
+        } catch (error) {
+            console.error(`Failed to ${action} swap:`, error);
+        }
+    };
 
     // Fetch all shifts from the backend and map to DayPilot format
     const fetchShifts = async () => {
@@ -291,8 +320,11 @@ const Calendar = () => {
     };
 
     useEffect(() => {
-        fetchShifts();
-    }, []);
+        if (user?.token) {
+            fetchShifts();
+            fetchSwaps();
+        }
+    }, [user?.token]);
 
     return (
         <div>
@@ -462,6 +494,28 @@ const Calendar = () => {
                             Create Shift
                         </button>
                     )}
+                    {/* Swap requests list */}
+                    <div>
+                        <h4 style={{ marginTop: "1rem" }}>Swap Requests</h4>
+                        <ul style={{ listStyle: "none", padding: 0 }}>
+                            {swapRequests.map(req => (
+                                <li key={req.swap._id} style={{ marginBottom: "0.5rem" }}>
+                                    {req.swap.from} wants to swap shift on{" "}
+                                    {new Date(req.shift.start).toLocaleDateString()} <br />
+                                    <button onClick={() => approveSwap(req.shiftId, req.swap._id, "accept")}>
+                                        Accept
+                                    </button>
+                                    <button onClick={() => approveSwap(req.shiftId, req.swap._id, "reject")}>
+                                        Reject
+                                    </button>
+                                </li>
+                            ))}
+                            {swapRequests.length === 0 && (
+                                <li style={{ color: "#888" }}>No pending swap requests.</li>
+                            )}
+                        </ul>
+                    </div>
+
                 </div>
 
                 <div style={styles.main}>
@@ -480,6 +534,8 @@ const Calendar = () => {
                     )}
                 </div>
             </div>
+
+
         </div>
     );
 }
