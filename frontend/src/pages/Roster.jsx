@@ -293,6 +293,16 @@ const Calendar = () => {
         }
     };
 
+    // A decorator to add display text + colors to shifts
+    function decorateShift(shift) {
+        return {
+            ...shift,
+            text: shift.person === "unassigned" ? "[Available for pickup]" : shift.person,
+            backColor: shift.person === "unassigned" ? "#ffcc00" : "#6aa84f"
+        };
+    }
+
+
     // Fetch all shifts from the backend and map to DayPilot format
     const fetchShifts = async () => {
         try {
@@ -303,14 +313,14 @@ const Calendar = () => {
                 setShifts([]);
                 return;
             }
-
-            const mappedShifts = data.map(ev => ({
-                id: ev._id,
-                text: ev.person || "Unassigned",
-                start: ev.start,
-                end: ev.end,
-                backColor: "#6aa84f"
-            }));
+            const mappedShifts = data.map(ev =>
+                decorateShift({
+                    id: ev._id,
+                    person: ev.person || "Unassigned",
+                    start: ev.start,
+                    end: ev.end
+                })
+            );
 
             setShifts(mappedShifts);
         } catch (error) {
