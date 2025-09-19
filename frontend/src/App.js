@@ -5,8 +5,7 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Roster from './pages/Roster';
 import LeaveRequests from './pages/LeaveRequests';
-
-
+import OvertimeRequests from './pages/OvertimeRequests';
 
 
 function App() {
@@ -20,6 +19,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/roster" element={<Roster />} />
         <Route path="/leave-requests" element={<LeaveRequests />} />
+        <Route path="/overtime-requests" element={<OvertimeRequests />} />
       </Routes>
     </Router>
   );

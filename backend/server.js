@@ -24,6 +24,8 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/shifts', require('./routes/shifts'));
 
 app.use('/api/leave-requests', require('./routes/leaveRoutes'));
+app.use('/api/overtime-requests', require('./routes/overtimeRoutes'));
+
 
 
 // Export the app object for testing

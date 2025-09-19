@@ -26,6 +26,7 @@ const Navbar = () => {
             <Link to="/profile" className="mr-4">Profile</Link>
             <Link to="/roster" className="mr-4">Roster</Link>
             <Link to="/leave-requests" className="mr-4">Leave Requests</Link>
+            <Link to="/overtime-requests" className="mr-4">Overtime Requests</Link>
 
             <button
               onClick={handleLogout}
