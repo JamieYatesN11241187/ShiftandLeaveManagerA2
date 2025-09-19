@@ -2994,6 +2994,8 @@ tar@^6.1.11:
 "task-manager@file:..":
   version "1.0.0"
   resolved "file:.."
+  dependencies:
+    cors "^2.8.5"
 
 to-regex-range@^5.0.1:
   version "5.0.1"
