@@ -104,4 +104,33 @@ exports.dropShift = async (req, res) => {
   }
 };
 
+exports.pickupShift = async (req, res) => {
+  try {
+    const shift = await Shift.findById(req.params.id);
+
+    if (!shift) {
+      return res.status(404).json({ message: "Shift not found." });
+    }
+
+    // Must be unassigned
+    if (shift.person !== "unassigned") {
+      return res.status(400).json({ message: "Shift is already assigned." });
+    }
+
+    // Assign to logged-in user
+    const currentUser = req.user;
+    if (!currentUser) {
+      return res.status(401).json({ message: "Unauthorized." });
+    }
+
+    shift.person = currentUser.name;  
+    shift.userId = currentUser._id;   
+    await shift.save();
+
+    return res.status(200).json({ message: "Shift picked up successfully.", shift });
+  } catch (error) {
+    console.error("Error picking up shift:", error.message);
+    res.status(500).json({ message: "Server error: " + error.message });
+  }
+};
 

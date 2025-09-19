@@ -153,7 +153,16 @@ const Calendar = () => {
                         }
                     ];
                 } else if (user?.role === "worker") {
+                    // unassigned shifts → allow pickup
                     return [
+                        {
+                            text: "Pick Up Shift",
+                            onClick: async args => {
+                                const confirmed = window.confirm("Do you want to pick up this shift?");
+                                if (!confirmed) return;
+                                await pickupShift(args.source.data.id);
+                            }
+                        },
                         {
                             text: "Drop Shift",
                             onClick: async args => {
@@ -163,6 +172,7 @@ const Calendar = () => {
                             }
                         }
                     ];
+
                 } else {
                     return []; // no menu for other roles
                 }
@@ -230,6 +240,28 @@ const Calendar = () => {
             }
         }
     };
+
+    const pickupShift = async (shiftId) => {
+        if (user?.role !== "worker") {
+            alert("Only workers can pick up shifts.");
+            return;
+        }
+
+        try {
+            await axiosInstance.put(
+                `/api/shifts/${shiftId}/pickup`,
+                {},
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+
+            alert("Shift picked up successfully.");
+            fetchShifts(); // refresh calendar
+        } catch (error) {
+            console.error("Failed to pick up shift:", error);
+            alert(error.response?.data?.message || "Failed to pick up shift.");
+        }
+    };
+
 
 
     // Fetch all shifts from the backend and map to DayPilot format
