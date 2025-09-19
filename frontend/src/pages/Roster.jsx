@@ -3,6 +3,12 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
 import SwapIterator from "../utils/SwapIterator";
+import {
+    PickupShiftCommand,
+    DropShiftCommand,
+    RequestSwapCommand,
+    ApproveSwapCommand
+} from "../utils/Commands";
 
 // Modal overlay styling
 const overlayStyle = {
@@ -98,6 +104,8 @@ const Calendar = () => {
 
         if (user && setUser) fetchProfile();
     }, [user, setUser]);
+
+    
 
 
     // Calendar configuration
@@ -207,354 +215,330 @@ const Calendar = () => {
         }
     };
 
-    const dropShift = async (shiftId) => {
-        if (!user || user?.role !== "worker") {
-            alert("Only workers can drop their own shifts.");
-            return;
-        }
 
-        try {
-            await axiosInstance.put(
-                `/api/shifts/${shiftId}/drop`,
-                {}, // no body needed
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
-
-            alert("Shift dropped successfully.");
-            fetchShifts(); // Refresh calendar/shift list
-        } catch (error) {
-            console.error("Failed to drop shift:", error);
-
-            if (error.response && error.response.data && error.response.data.message) {
-                alert(error.response.data.message);
-            } else {
-                alert("Failed to drop shift. Please try again.");
-            }
-        }
-    };
-
+    // Calling of Commands for shift operations
     const pickupShift = async (shiftId) => {
-        if (user?.role !== "worker") {
-            alert("Only workers can pick up shifts.");
-            return;
-        }
-
         try {
-            await axiosInstance.put(
-                `/api/shifts/${shiftId}/pickup`,
-                {},
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
-
+            const cmd = new PickupShiftCommand(shiftId, user);
+            await cmd.execute();
             alert("Shift picked up successfully.");
-            fetchShifts(); // refresh calendar
+            fetchShifts();
         } catch (error) {
-            console.error("Failed to pick up shift:", error);
-            alert(error.response?.data?.message || "Failed to pick up shift.");
+            alert("Failed to pick up shift.");
         }
     };
 
-    // Fetch all swap requests
-    const fetchSwaps = async () => {
+    const dropShift = async (shiftId) => {
         try {
-            const response = await axiosInstance.get('/api/swaps/me', {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
-            setSwapRequests(response.data || []);
+            const cmd = new DropShiftCommand(shiftId, user);
+            await cmd.execute();
+            alert("Shift dropped successfully.");
+            fetchShifts();
         } catch (error) {
-            console.error("Failed to fetch swap requests:", error);
-            setSwapRequests([]);
+            alert("Failed to drop shift.");
         }
     };
 
-    // Approve/reject a swap
+    const requestSwap = async (shiftId) => {
+        try {
+            const cmd = new RequestSwapCommand(shiftId, user);
+            await cmd.execute();
+            alert("Swap request sent.");
+        } catch (error) {
+            alert("Failed to request swap.");
+        }
+    };
+
     const approveSwap = async (shiftId, swapId, action) => {
         try {
-            const response = await axiosInstance.put(
-                `/api/swaps/${shiftId}/approval`,
-                { swapId, action },
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
-
-            const updatedShift = response.data.shift;
-
-            setShifts(prev =>
-                prev.map(s => (s.id === updatedShift._id ? {
-                    id: updatedShift._id,
-                    text: updatedShift.person || "Unassigned",
-                    start: updatedShift.start,
-                    end: updatedShift.end,
-                    backColor: "#6aa84f"
-                } : s))
-            );
-
-            fetchSwaps();
-        } catch (error) {
-            console.error(`Failed to ${action} swap:`, error);
-        }
-    };
-
-    // A decorator to add display text + colors to shifts
-    function decorateShift(shift) {
-        return {
-            ...shift,
-            text: shift.person === "unassigned" ? "[Available for pickup]" : shift.person,
-            backColor: shift.person === "unassigned" ? "#ffcc00" : "#6aa84f"
-        };
-    }
-
-
-    // Fetch all shifts from the backend and map to DayPilot format
-    const fetchShifts = async () => {
-        try {
-            const response = await axiosInstance.get('/api/shifts');
-            const data = response.data;
-
-            if (!data || data.length === 0) {
-                setShifts([]);
-                return;
-            }
-            const mappedShifts = data.map(ev =>
-                decorateShift({
-                    id: ev._id,
-                    person: ev.person || "Unassigned",
-                    start: ev.start,
-                    end: ev.end
-                })
-            );
-
-            setShifts(mappedShifts);
-        } catch (error) {
-            console.error("Failed to fetch shifts:", error);
-            setShifts([]);
-        }
-    };
-
-    useEffect(() => {
-        if (user?.token) {
+            const cmd = new ApproveSwapCommand(shiftId, swapId, action, user);
+            await cmd.execute();
+            alert(`Swap ${action}ed.`);
             fetchShifts();
             fetchSwaps();
+        } catch (error) {
+            alert(`Failed to ${action} swap.`);
         }
-    }, [user?.token]);
+    };
 
-    return (
-        <div>
-            {/* Edit Shift Modal */}
-            {editModalVisible && (
-                <div style={overlayStyle}>
-                    <div style={{ ...modalStyle, width: '350px' }}>
-                        <h3 style={{ marginBottom: '1rem' }}>Edit Shift</h3>
+  
+      // Fetch all swap requests
+      const fetchSwaps = async () => {
+          try {
+              const response = await axiosInstance.get('/api/swaps/me', {
+                  headers: { Authorization: `Bearer ${user.token}` }
+              });
+              setSwapRequests(response.data || []);
+          } catch (error) {
+              console.error("Failed to fetch swap requests:", error);
+              setSwapRequests([]);
+          }
+      }; 
 
-                        {/* Edit form fields */}
-                        <label style={labelStyle}>Person:
-                            <input
-                                type="text"
-                                value={editFormData.person}
-                                onChange={(e) => setEditFormData({ ...editFormData, person: e.target.value })}
-                                style={inputStyle}
-                            />
-                        </label>
-                        <label style={labelStyle}>Start:
-                            <input
-                                type="datetime-local"
-                                value={editFormData.start}
-                                onChange={(e) => setEditFormData({ ...editFormData, start: e.target.value })}
-                                style={inputStyle}
-                            />
-                        </label>
-                        <label style={labelStyle}>End:
-                            <input
-                                type="datetime-local"
-                                value={editFormData.end}
-                                onChange={(e) => setEditFormData({ ...editFormData, end: e.target.value })}
-                                style={inputStyle}
-                            />
-                        </label>
+       
+// Place any additional functions (like fetchSwaps) here if needed, inside the Calendar component.
 
-                        {/* Action buttons */}
-                        <div style={{ marginTop: '1rem' }}>
-                            <button
-                                style={buttonStyle}
-                                onClick={async () => {
-                                    if (!editFormData.person || !editFormData.start || !editFormData.end) {
-                                        alert("Please fill in all fields.");
-                                        return;
-                                    }
+// A decorator to add display text + colors to shifts
+function decorateShift(shift) {
+    return {
+        ...shift,
+        text: shift.person === "unassigned" ? "[Available for pickup]" : shift.person,
+        backColor: shift.person === "unassigned" ? "#ffcc00" : "#6aa84f"
+    };
+}
 
-                                    try {
-                                        await axiosInstance.put(`/api/shifts/${editFormData.id}`, {
-                                            person: editFormData.person,
-                                            start: toUtcISOString(editFormData.start),
-                                            end: toUtcISOString(editFormData.end),
-                                        }, {
-                                            headers: { Authorization: `Bearer ${user.token}` }
-                                        });
 
-                                        setEditModalVisible(false);
-                                        fetchShifts();
-                                    } catch (error) {
-                                        alert("Failed to update shift.");
-                                        console.error(error);
-                                    }
-                                }}
-                            >
-                                Update
-                            </button>
-                            <button
-                                style={{ ...buttonStyle, marginLeft: '10px', backgroundColor: '#ccc' }}
-                                onClick={() => setEditModalVisible(false)}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+// Fetch all shifts from the backend and map to DayPilot format
+const fetchShifts = async () => {
+    try {
+        const response = await axiosInstance.get('/api/shifts');
+        const data = response.data;
 
-            {/* Create Shift Modal */}
-            {formVisible && user && user?.role === "manager" && (
-                <div style={overlayStyle}>
-                    <div style={modalStyle}>
-                        <h3 style={{ marginBottom: '1rem' }}>Create Time</h3>
+        if (!data || data.length === 0) {
+            setShifts([]);
+            return;
+        }
+        const mappedShifts = data.map(ev =>
+            decorateShift({
+                id: ev._id,
+                person: ev.person || "Unassigned",
+                start: ev.start,
+                end: ev.end
+            })
+        );
 
-                        {/* Form fields */}
-                        <label style={labelStyle}>Person:
-                            <input
-                                type="text"
-                                value={formData.person}
-                                onChange={(e) => setFormData({ ...formData, person: e.target.value })}
-                                style={inputStyle}
-                            />
-                        </label>
-                        <label style={labelStyle}>Start:
-                            <input
-                                type="datetime-local"
-                                value={formData.start}
-                                onChange={(e) => setFormData({ ...formData, start: e.target.value })}
-                                style={inputStyle}
-                            />
-                        </label>
-                        <label style={labelStyle}>End:
-                            <input
-                                type="datetime-local"
-                                value={formData.end}
-                                onChange={(e) => setFormData({ ...formData, end: e.target.value })}
-                                style={inputStyle}
-                            />
-                        </label>
+        setShifts(mappedShifts);
+    } catch (error) {
+        console.error("Failed to fetch shifts:", error);
+        setShifts([]);
+    }
+};
 
-                        {/* Action buttons */}
-                        <div style={{ marginTop: '1rem' }}>
-                            <button style={buttonStyle} onClick={async () => {
-                                if (!formData.person || !formData.start || !formData.end) {
+useEffect(() => {
+    if (user?.token) {
+        fetchShifts();
+        fetchSwaps();
+    }
+}, [user?.token]);
+
+return (
+    <div>
+        {/* Edit Shift Modal */}
+        {editModalVisible && (
+            <div style={overlayStyle}>
+                <div style={{ ...modalStyle, width: '350px' }}>
+                    <h3 style={{ marginBottom: '1rem' }}>Edit Shift</h3>
+
+                    {/* Edit form fields */}
+                    <label style={labelStyle}>Person:
+                        <input
+                            type="text"
+                            value={editFormData.person}
+                            onChange={(e) => setEditFormData({ ...editFormData, person: e.target.value })}
+                            style={inputStyle}
+                        />
+                    </label>
+                    <label style={labelStyle}>Start:
+                        <input
+                            type="datetime-local"
+                            value={editFormData.start}
+                            onChange={(e) => setEditFormData({ ...editFormData, start: e.target.value })}
+                            style={inputStyle}
+                        />
+                    </label>
+                    <label style={labelStyle}>End:
+                        <input
+                            type="datetime-local"
+                            value={editFormData.end}
+                            onChange={(e) => setEditFormData({ ...editFormData, end: e.target.value })}
+                            style={inputStyle}
+                        />
+                    </label>
+
+                    {/* Action buttons */}
+                    <div style={{ marginTop: '1rem' }}>
+                        <button
+                            style={buttonStyle}
+                            onClick={async () => {
+                                if (!editFormData.person || !editFormData.start || !editFormData.end) {
                                     alert("Please fill in all fields.");
                                     return;
                                 }
-                                try {
-                                    await axiosInstance.post('/api/shifts',
-                                        {
-                                            person: formData.person,
-                                            start: toUtcISOString(formData.start),
-                                            end: toUtcISOString(formData.end),
-                                        },
-                                        {
-                                            headers: { Authorization: `Bearer ${user.token}` }
-                                        }
-                                    );
 
-                                    setFormVisible(false);
-                                    setFormData({ person: '', start: '', end: '' });
+                                try {
+                                    await axiosInstance.put(`/api/shifts/${editFormData.id}`, {
+                                        person: editFormData.person,
+                                        start: toUtcISOString(editFormData.start),
+                                        end: toUtcISOString(editFormData.end),
+                                    }, {
+                                        headers: { Authorization: `Bearer ${user.token}` }
+                                    });
+
+                                    setEditModalVisible(false);
                                     fetchShifts();
                                 } catch (error) {
-                                    alert('Failed to create Shift. In Roster returns.');
+                                    alert("Failed to update shift.");
                                     console.error(error);
                                 }
-                            }}>
-                                Create
-                            </button>
-                            <button
-                                style={{ ...buttonStyle, marginLeft: '10px', backgroundColor: '#ccc' }}
-                                onClick={() => setFormVisible(false)}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Calendar UI Layout */}
-            <div style={styles.wrap}>
-                <div style={styles.left}>
-                    {/* Date selector (week-based) */}
-                    <DayPilotNavigator
-                        selectMode={"Week"}
-                        showMonths={1}
-                        skipMonths={1}
-                        selectionDay={startDate}
-                        onTimeRangeSelected={args => {
-                            setStartDate(args.day);
-                        }}
-                    />
-                    {/* Show Create Shift button for managers */}
-                    {user && user?.role === "manager" && (
-                        <button
-                            style={{ ...buttonStyle, marginBottom: "1rem" }}
-                            onClick={() => setFormVisible(true)}
+                            }}
                         >
-                            Create Shift
+                            Update
                         </button>
-                    )}
-                    {/* Swap requests list */}
-                    <div>
-                        <h4 style={{ marginTop: "1rem" }}>Swap Requests</h4>
-                        <ul style={{ listStyle: "none", padding: 0 }}>
-                            {(() => {
-                                const iter = new SwapIterator(swapRequests);
-                                const items = [];
-                                while (iter.hasNext()) {
-                                    const req = iter.next();
-                                    items.push(
-                                        <li key={req.swap._id} style={{ marginBottom: "0.5rem" }}>
-                                            {req.swap.from} wants to swap shift on{" "}
-                                            {new Date(req.shift.start).toLocaleDateString()}
-                                            <br />
-                                            <button onClick={() => approveSwap(req.shiftId, req.swap._id, "accept")}>
-                                                Accept
-                                            </button>
-                                            <button onClick={() => approveSwap(req.shiftId, req.swap._id, "reject")}>
-                                                Reject
-                                            </button>
-                                        </li>
-                                    );
-                                }
-                                return items;
-                            })()}
-                        </ul>
+                        <button
+                            style={{ ...buttonStyle, marginLeft: '10px', backgroundColor: '#ccc' }}
+                            onClick={() => setEditModalVisible(false)}
+                        >
+                            Cancel
+                        </button>
                     </div>
-
-                </div>
-
-                <div style={styles.main}>
-                    {/* DayPilot weekly calendar with shift events */}
-                    {shifts.length > 0 ? (
-                        <DayPilotCalendar
-                            {...config}
-                            events={shifts}
-                            startDate={startDate}
-                            controlRef={setCalendar}
-                        />
-                    ) : (
-                        <div style={{ padding: "2rem", textAlign: "center", color: "#888" }}>
-                            No shifts to display.
-                        </div>
-                    )}
                 </div>
             </div>
+        )}
 
+        {/* Create Shift Modal */}
+        {formVisible && user && user?.role === "manager" && (
+            <div style={overlayStyle}>
+                <div style={modalStyle}>
+                    <h3 style={{ marginBottom: '1rem' }}>Create Time</h3>
 
+                    {/* Form fields */}
+                    <label style={labelStyle}>Person:
+                        <input
+                            type="text"
+                            value={formData.person}
+                            onChange={(e) => setFormData({ ...formData, person: e.target.value })}
+                            style={inputStyle}
+                        />
+                    </label>
+                    <label style={labelStyle}>Start:
+                        <input
+                            type="datetime-local"
+                            value={formData.start}
+                            onChange={(e) => setFormData({ ...formData, start: e.target.value })}
+                            style={inputStyle}
+                        />
+                    </label>
+                    <label style={labelStyle}>End:
+                        <input
+                            type="datetime-local"
+                            value={formData.end}
+                            onChange={(e) => setFormData({ ...formData, end: e.target.value })}
+                            style={inputStyle}
+                        />
+                    </label>
+
+                    {/* Action buttons */}
+                    <div style={{ marginTop: '1rem' }}>
+                        <button style={buttonStyle} onClick={async () => {
+                            if (!formData.person || !formData.start || !formData.end) {
+                                alert("Please fill in all fields.");
+                                return;
+                            }
+                            try {
+                                await axiosInstance.post('/api/shifts',
+                                    {
+                                        person: formData.person,
+                                        start: toUtcISOString(formData.start),
+                                        end: toUtcISOString(formData.end),
+                                    },
+                                    {
+                                        headers: { Authorization: `Bearer ${user.token}` }
+                                    }
+                                );
+
+                                setFormVisible(false);
+                                setFormData({ person: '', start: '', end: '' });
+                                fetchShifts();
+                            } catch (error) {
+                                alert('Failed to create Shift. In Roster returns.');
+                                console.error(error);
+                            }
+                        }}>
+                            Create
+                        </button>
+                        <button
+                            style={{ ...buttonStyle, marginLeft: '10px', backgroundColor: '#ccc' }}
+                            onClick={() => setFormVisible(false)}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Calendar UI Layout */}
+        <div style={styles.wrap}>
+            <div style={styles.left}>
+                {/* Date selector (week-based) */}
+                <DayPilotNavigator
+                    selectMode={"Week"}
+                    showMonths={1}
+                    skipMonths={1}
+                    selectionDay={startDate}
+                    onTimeRangeSelected={args => {
+                        setStartDate(args.day);
+                    }}
+                />
+                {/* Show Create Shift button for managers */}
+                {user && user?.role === "manager" && (
+                    <button
+                        style={{ ...buttonStyle, marginBottom: "1rem" }}
+                        onClick={() => setFormVisible(true)}
+                    >
+                        Create Shift
+                    </button>
+                )}
+                {/* Swap requests list */}
+                <div>
+                    <h4 style={{ marginTop: "1rem" }}>Swap Requests</h4>
+                    <ul style={{ listStyle: "none", padding: 0 }}>
+                        {(() => {
+                            const iter = new SwapIterator(swapRequests);
+                            const items = [];
+                            while (iter.hasNext()) {
+                                const req = iter.next();
+                                items.push(
+                                    <li key={req.swap._id} style={{ marginBottom: "0.5rem" }}>
+                                        {req.swap.from} wants to swap shift on{" "}
+                                        {new Date(req.shift.start).toLocaleDateString()}
+                                        <br />
+                                        <button onClick={() => approveSwap(req.shiftId, req.swap._id, "accept")}>
+                                            Accept
+                                        </button>
+                                        <button onClick={() => approveSwap(req.shiftId, req.swap._id, "reject")}>
+                                            Reject
+                                        </button>
+                                    </li>
+                                );
+                            }
+                            return items;
+                        })()}
+                    </ul>
+                </div>
+
+            </div>
+
+            <div style={styles.main}>
+                {/* DayPilot weekly calendar with shift events */}
+                {shifts.length > 0 ? (
+                    <DayPilotCalendar
+                        {...config}
+                        events={shifts}
+                        startDate={startDate}
+                        controlRef={setCalendar}
+                    />
+                ) : (
+                    <div style={{ padding: "2rem", textAlign: "center", color: "#888" }}>
+                        No shifts to display.
+                    </div>
+                )}
+            </div>
         </div>
-    );
+
+
+    </div>
+);
 }
 
 export default Calendar;

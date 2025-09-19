@@ -21,3 +21,5 @@ router.put('/:id', protect, leaveController.updateLeaveRequest);
 router.delete('/:id', protect, leaveController.deleteLeaveRequest);
 
 module.exports = router; // Export the router for use in the main app
+
+
