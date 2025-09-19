@@ -9,12 +9,24 @@ const generateToken = (id) => {
 };
 
 const registerUser = async (req, res) => {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, dob } = req.body;
     try {
+        const today = new Date();
+        const birthDate = new Date(dob);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+
+        if (age < 14) {
+            return res.status(400).json({ message: 'Apologies, but you are too young to work under Australian Compliance' });
+        }
+
         const userExists = await User.findOne({ email });
         if (userExists) return res.status(400).json({ message: 'User already exists' });
 
-        const user = await User.create({ name, email, password, role });
+        const user = await User.create({ name, email, password, role, dob });
         res.status(201).json({ id: user.id, name: user.name, email: user.email, role: user.role, token: generateToken(user.id) });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -71,4 +83,13 @@ const updateUserProfile = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, loginUser, updateUserProfile, getProfile };
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find({ role: { $in: ['manager', 'worker'] } }).select('_id name');
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { registerUser, loginUser, updateUserProfile, getProfile, getAllUsers };
