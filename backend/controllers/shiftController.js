@@ -31,6 +31,14 @@ exports.getShifts = async (req, res) => {
   }
 };
 
+exports.getUserShifts = async (req, res) => {
+  try {
+    const shifts = await Shift.find({ person: req.user.name }); // Fetch all shifts from the database
+    res.json(shifts); // Return the array of shifts
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch shifts', error: error.message });
+  }
+};
 exports.updateShift = async (req, res) => {
   const { id } = req.params; // Extract shift ID from route parameters
   const { person, start, end } = req.body; // Extract updated data from request body
