@@ -76,6 +76,7 @@ const Calendar = () => {
     const [formVisible, setFormVisible] = useState(false); // Show/hide creation modal
     const [formData, setFormData] = useState({ person: '', start: '', end: '' }); // New shift form state
     const [shifts, setShifts] = useState([]); // Array of shift events for calendar
+    const [users, setUsers] = useState([]); // Array of users for dropdown
 
     const [editModalVisible, setEditModalVisible] = useState(false); // Show/hide edit modal
     const [editFormData, setEditFormData] = useState({ id: '', person: '', start: '', end: '' }); // Edit shift form state
@@ -87,14 +88,27 @@ const Calendar = () => {
                 const response = await axiosInstance.get('/api/auth/profile', {
                     headers: { Authorization: `Bearer ${user.token}` },
                 });
-                setFormData(prev => ({ ...prev, person: response.data.name }));
                 setUser(prev => ({ ...prev, role: response.data.role }));
             } catch (error) {
                 alert('Failed to fetch profile. Please try again.');
             }
         };
 
-        if (user && setUser) fetchProfile();
+        const fetchUsers = async () => {
+            try {
+                const response = await axiosInstance.get('/api/auth/users', {
+                    headers: { Authorization: `Bearer ${user.token}` },
+                });
+                setUsers(response.data);
+            } catch (error) {
+                alert('Failed to fetch users. Please try again.');
+            }
+        };
+
+        if (user && setUser) {
+            fetchProfile();
+            fetchUsers();
+        }
     }, [user, setUser]);
 
     // Calendar configuration
@@ -344,12 +358,17 @@ const Calendar = () => {
 
                         {/* Form fields */}
                         <label style={labelStyle}>Person:
-                            <input
-                                type="text"
+                            <select
                                 value={formData.person}
                                 onChange={(e) => setFormData({ ...formData, person: e.target.value })}
                                 style={inputStyle}
-                            />
+                                required
+                            >
+                                <option value="" disabled>Select a person</option>
+                                {users.map(user => (
+                                    <option key={user._id} value={user.name}>{user.name}</option>
+                                ))}
+                            </select>
                         </label>
                         <label style={labelStyle}>Start:
                             <input
