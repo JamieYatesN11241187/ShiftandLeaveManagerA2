@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext'; // Access authentication context
 import axiosInstance from '../axiosConfig'; // Axios instance with base URL and config
+import { useMemento } from '../hooks/useMemento';
 
 const Profile = () => {
   const { user, setUser } = useAuth(); // Get user and updater function from context
 
-  // Local state for form input values
-  const [formData, setFormData] = useState({
+  // Memento-based state management for form data
+  const { state: formData, setState: setFormData, reset, undo, redo, canUndo, canRedo } = useMemento({
     name: '',
     email: '',
     role: '',
@@ -24,13 +25,14 @@ const Profile = () => {
           headers: { Authorization: `Bearer ${user.token}` }, // Pass token for authentication
         });
 
-        // Populate form with fetched profile data
-        setFormData({
+        // Populate form with fetched profile data and reset memento history
+        const profileData = {
           name: response.data.name,
           email: response.data.email,
           role: response.data.role || '',
           address: response.data.address || '',
-        });
+        };
+        reset(profileData);
       } catch (error) {
         alert('Failed to fetch profile. Please try again.');
       } finally {
@@ -39,7 +41,7 @@ const Profile = () => {
     };
 
     if (user) fetchProfile(); // Only fetch if user is authenticated
-  }, [user]);
+  }, [user, reset]);
 
   // Handle form submission to update profile
   const handleSubmit = async (e) => {
@@ -60,6 +62,9 @@ const Profile = () => {
       } else {
         setUser({ ...user, role: formData.role });
       }
+
+      // Reset memento with the new submitted data
+      reset(formData);
     } catch (error) {
       alert('Failed to update profile. Please try again.');
       console.log(error); // Log error for debugging
@@ -113,6 +118,16 @@ const Profile = () => {
           onChange={(e) => setFormData({ ...formData, address: e.target.value })}
           className="w-full mb-4 p-2 border rounded"
         />
+
+        {/* Undo/Redo Buttons */}
+        <div className="flex justify-between mb-4">
+          <button type="button" onClick={undo} disabled={!canUndo} className="bg-green-400 text-white p-2 rounded disabled:opacity-50">
+            Undo
+          </button>
+          <button type="button" onClick={redo} disabled={!canRedo} className="bg-green-400 text-white p-2 rounded disabled:opacity-50">
+            Redo
+          </button>
+        </div>
 
         {/* Submit button */}
         <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">
