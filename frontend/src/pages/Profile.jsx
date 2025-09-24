@@ -43,9 +43,30 @@ const Profile = () => {
     if (user) fetchProfile(); // Only fetch if user is authenticated
   }, [user, reset]);
 
+  // Handle form input changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    // Proper case for name
+    if (name === 'name') {
+      const properCaseName = value.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+      setFormData({ ...formData, [name]: properCaseName });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+  };
+
   // Handle form submission to update profile
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      alert('Please enter a valid email address.');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await axiosInstance.put('/api/auth/profile', formData, {
@@ -87,8 +108,9 @@ const Profile = () => {
         <input
           type="text"
           placeholder="Name"
+          name="name"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
         />
 
@@ -96,26 +118,32 @@ const Profile = () => {
         <input
           type="email"
           placeholder="Email"
+          name="email"
           value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
         />
 
-        {/* Role input field (not editable in most cases, could be restricted) */}
-        <input
-          type="text"
-          placeholder="role"
+        {/* Role dropdown */}
+        <select
+          name="role"
           value={formData.role}
-          onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
-        />
+          required
+        >
+          <option value="" disabled>Select a role</option>
+          <option value="manager">Manager</option>
+          <option value="worker">Worker</option>
+        </select>
 
         {/* Address input field */}
         <input
           type="text"
           placeholder="Address"
+          name="address"
           value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
         />
 
