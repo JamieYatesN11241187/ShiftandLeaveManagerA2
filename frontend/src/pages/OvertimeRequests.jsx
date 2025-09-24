@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../axiosConfig";
+import { useMemento } from "../hooks/useMemento";
 const btn = "px-3 py-1 rounded text-white text-sm font-medium";
 const btnPrimary = `${btn} bg-blue-600 hover:bg-blue-500`;
 const btnDanger = `${btn} bg-red-500 hover:bg-red-600`;
@@ -102,7 +103,17 @@ const formatShiftOption = (shift) => {
  new overtime request.
  Fields: shift, hours, reason
  */
-const OvertimeForm = ({ formData, setFormData, shifts, onCancel, onSubmit }) => (
+const OvertimeForm = ({
+    formData,
+    setFormData,
+    shifts,
+    onCancel,
+    onSubmit,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+}) => (
     <div className={`${card} max-w-md mx-auto`}>
         <h3 className="text-lg font-bold mb-4 text-blue-600">New Overtime</h3>
         <div className="space-y-3">
@@ -134,9 +145,19 @@ const OvertimeForm = ({ formData, setFormData, shifts, onCancel, onSubmit }) => 
                 className={input}
             />
         </div>
-        <div className="mt-4 flex justify-end space-x-2">
-            <button onClick={onCancel} className={btnSecondary}>Cancel</button>
-            <button onClick={onSubmit} className={btnPrimary}>Submit</button>
+        <div className="mt-4 flex justify-between">
+            <div>
+                <button type="button" onClick={undo} disabled={!canUndo} className="bg-green-400 text-white p-2 rounded disabled:opacity-50 mr-2">
+                    Undo
+                </button>
+                <button type="button" onClick={redo} disabled={!canRedo} className="bg-green-400 text-white p-2 rounded disabled:opacity-50">
+                    Redo
+                </button>
+            </div>
+            <div>
+                <button onClick={onCancel} className={btnSecondary}>Cancel</button>
+                <button onClick={onSubmit} className={`${btnPrimary} ml-2`}>Submit</button>
+            </div>
         </div>
     </div>
 );
@@ -153,7 +174,15 @@ const OvertimeRequests = () => {
     const [requests, setRequests] = useState([]);
     const [shifts, setShifts] = useState([]);
     const [formVisible, setFormVisible] = useState(false);
-    const [formData, setFormData] = useState({
+    const {
+        state: formData,
+        setState: setFormData,
+        reset,
+        undo,
+        redo,
+        canUndo,
+        canRedo,
+    } = useMemento({
         date: "",
         shiftTimings: "",
         reason: "",
@@ -161,6 +190,7 @@ const OvertimeRequests = () => {
         person: "",
         status: "pending",
     });
+
     useEffect(() => {
         if (!user?.token) return;
         const fetchData = async () => {
@@ -173,13 +203,20 @@ const OvertimeRequests = () => {
                 ]);
                 setRequests(reqRes.data);
                 setShifts(shiftRes.data);
-                setFormData((f) => ({ ...f, person: profileRes.data.name }));
+                reset({
+                    date: "",
+                    shiftTimings: "",
+                    reason: "",
+                    hoursRequested: "",
+                    person: profileRes.data.name,
+                    status: "pending",
+                });
             } catch {
                 console.error("Failed to load data");
             }
         };
         fetchData();
-    }, [user]);
+    }, [user, reset]);
 
     //Employeenew request
     const handleCreateRequest = async () => {
@@ -194,7 +231,7 @@ const OvertimeRequests = () => {
         try {
             await axiosInstance.post("/api/overtime-requests", formData, { headers: { Authorization: `Bearer ${user.token}` } });
             setFormVisible(false);
-            setFormData((f) => ({ ...f, date: "", shiftTimings: "", reason: "", hoursRequested: "" }));
+            reset({ ...formData, date: "", shiftTimings: "", reason: "", hoursRequested: "" });
             const refreshed = await axiosInstance.get("/api/overtime-requests", { headers: { Authorization: `Bearer ${user.token}` } });
             setRequests(refreshed.data);
         } catch {
@@ -279,6 +316,10 @@ const OvertimeRequests = () => {
                             shifts={shifts}
                             onCancel={() => setFormVisible(false)}
                             onSubmit={handleCreateRequest}
+                            undo={undo}
+                            redo={redo}
+                            canUndo={canUndo}
+                            canRedo={canRedo}
                         />
                     </div>
                 )}
@@ -286,4 +327,5 @@ const OvertimeRequests = () => {
         </div>
     );
 };
+
 export default OvertimeRequests;
