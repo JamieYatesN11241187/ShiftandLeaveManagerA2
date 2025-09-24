@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../axiosConfig";
+import { useMemento } from "../hooks/useMemento";
 const btn = "px-3 py-1 rounded text-white text-sm font-medium";
 const btnPrimary = `${btn} bg-blue-600 hover:bg-blue-500`;
 const btnDanger = `${btn} bg-red-500 hover:bg-red-600`;
@@ -111,7 +112,15 @@ const LeaveRequests = () => {
     const { user } = useAuth();
     const [requests, setRequests] = useState([]);
     const [formVisible, setFormVisible] = useState(false);
-    const [formData, setFormData] = useState({
+    const {
+        state: formData,
+        setState: setFormData,
+        reset,
+        undo,
+        redo,
+        canUndo,
+        canRedo,
+    } = useMemento({
         start: "",
         end: "",
         person: "",
@@ -133,14 +142,19 @@ const LeaveRequests = () => {
                 ]);
 
                 setRequests(reqRes.data);
-                setFormData((f) => ({ ...f, person: profileRes.data.name }));
+                reset({
+                    start: "",
+                    end: "",
+                    person: profileRes.data.name,
+                    status: "pending",
+                });
             } catch {
                 console.error("Failed to load data");
             }
         };
 
         fetchData();
-    }, [user]);
+    }, [user, reset]);
 
     const handleCreateRequest = async () => {
         if (!formData.start || !formData.end) {
@@ -152,7 +166,7 @@ const LeaveRequests = () => {
                 headers: { Authorization: `Bearer ${user.token}` },
             });
             setFormVisible(false);
-            setFormData((f) => ({ ...f, start: "", end: "" }));
+            reset({ ...formData, start: "", end: "" });
             const refreshed = await axiosInstance.get("/api/leave-requests", {
                 headers: { Authorization: `Bearer ${user.token}` },
             });
@@ -291,16 +305,26 @@ const LeaveRequests = () => {
                                     className={input}
                                 />
                             </div>
-                            <div className="mt-4 flex justify-end space-x-2">
-                                <button
-                                    onClick={() => setFormVisible(false)}
-                                    className={btnSecondary}
-                                >
-                                    Cancel
-                                </button>
-                                <button onClick={handleCreateRequest} className={btnPrimary}>
-                                    Submit
-                                </button>
+                            <div className="mt-4 flex justify-between">
+                                <div>
+                                    <button type="button" onClick={undo} disabled={!canUndo} className="bg-green-400 text-white p-2 rounded disabled:opacity-50 mr-2">
+                                        Undo
+                                    </button>
+                                    <button type="button" onClick={redo} disabled={!canRedo} className="bg-green-400 text-white p-2 rounded disabled:opacity-50">
+                                        Redo
+                                    </button>
+                                </div>
+                                <div>
+                                    <button
+                                        onClick={() => setFormVisible(false)}
+                                        className={btnSecondary}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button onClick={handleCreateRequest} className={`${btnPrimary} ml-2`}>
+                                        Submit
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -27,6 +27,11 @@ app.use('/api/leave-requests', require('./routes/leaveRoutes'));
 app.use('/api/overtime-requests', require('./routes/overtimeRoutes'));
 
 
+// server.js
+const swapRoutes = require("./routes/swaps");
+app.use(express.json());            
+app.use("/api/swaps", swapRoutes); 
+
 
 // Export the app object for testing
 if (require.main === module) {

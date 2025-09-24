@@ -1,11 +1,18 @@
-const mongoose = require('mongoose'); // Import Mongoose for MongoDB interactions
+// models/Shift.js
+const mongoose = require("mongoose");
 
-// Define the schema for a Shift
-const ShiftSchema = new mongoose.Schema({
-  person: String,     // Name or identifier of the person assigned to the shift
-  start: Date,        // Start date and time of the shift
-  end: Date           // End date and time of the shift
+const swapSchema = new mongoose.Schema({
+  from: { type: String, required: true },     // requester
+  to:   { type: String, required: true },     // current owner of the shift
+  status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending" },
+  createdAt: { type: Date, default: Date.now }
+}, { _id: true });
+
+const shiftSchema = new mongoose.Schema({
+  person: { type: String, required: true },
+  start:  { type: Date, required: true },
+  end:    { type: Date, required: true },
+  swaps:  { type: [swapSchema], default: [] }   
 });
 
-// Export the Shift model based on the defined schema
-module.exports = mongoose.model('Shift', ShiftSchema);
+module.exports = mongoose.model("Shift", shiftSchema);

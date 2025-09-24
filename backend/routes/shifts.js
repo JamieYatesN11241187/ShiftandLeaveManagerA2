@@ -22,4 +22,6 @@ router.put('/:id', shiftController.updateShift);
 // Drop shift - only for the assigned person
 router.put("/:id/drop", protect, shiftController.dropShift);
 
-module.exports = router;
+router.put("/:id/pickup", protect, shiftController.pickupShift);
+
+module.exports = router; // Export the router to be used in the main app
