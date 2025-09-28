@@ -4,17 +4,21 @@ const User = require("../models/User");
 // Create a new shift
 exports.createShift = async (req, res) => {
   try {
-    const { person, start, end } = req.body; // Destructure fields from request body
+      if(req.body.person){
+        const { person, start, end } = req.body; // Destructure fields from request body
 
-    // Create a new Shift instance with provided data
-    const shift = new Shift({
-      person,
-      start,
-      end,
-    });
-
-    await shift.save(); // Save the new shift to the database
-    res.status(201).json(shift); // Return the created shift with 201 status
+        // Create a new Shift instance with provided data
+        const shift = new Shift({
+          person,
+          start,
+          end,
+     });
+     
+      await shift.save(); // Save the new shift to the database
+      res.status(201).json(shift); // Return the created shift with 201 status
+      } else {
+        res.status(400).json({ message: 'Person field is required' });
+      }
   } catch (error) {
     // Return error response in case of failure
     res.status(500).json({ message: 'Failed to create shift.', error: error.message });
@@ -58,7 +62,7 @@ exports.updateShift = async (req, res) => {
     const updatedShift = await shift.save(); // Save updated shift
     res.json(updatedShift); // Return the updated shift
   } catch (error) {
-    console.error("Update error:", error);
+    //console.error("Update error:", error);
     res.status(500).json({ message: 'Failed to update shift', error: error.message });
   }
 };
@@ -76,7 +80,7 @@ exports.deleteShift = async (req, res) => {
 
     res.status(200).json({ message: "Shift deleted successfully" }); // Confirm successful deletion
   } catch (error) {
-    console.error("Delete error:", error);
+    //console.error("Delete error:", error);
     res.status(500).json({ error: "Failed to delete shift" });
   }
 };
@@ -107,7 +111,7 @@ exports.dropShift = async (req, res) => {
       .status(200)
       .json({ message: "Shift dropped successfully and set as unassigned." });
   } catch (error) {
-    console.error("Error dropping shift:", error.message);
+    //console.error("Error dropping shift:", error.message);
     res.status(500).json({ message: "Server error: " + error.message });
   }
 };
@@ -137,7 +141,7 @@ exports.pickupShift = async (req, res) => {
 
     return res.status(200).json({ message: "Shift picked up successfully.", shift });
   } catch (error) {
-    console.error("Error picking up shift:", error.message);
+    //console.error("Error picking up shift:", error.message);
     res.status(500).json({ message: "Server error: " + error.message });
   }
 };

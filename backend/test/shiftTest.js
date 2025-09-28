@@ -5,7 +5,7 @@ const Shift = require('../models/Shift');
 const { createShift, updateShift, deleteShift, getShifts } = require('../controllers/shiftController');
 const { expect } = chai;
 
-describe('CreateShift Function Test', () => {
+describe('Create Shift Function Test', () => {
   afterEach(() => sinon.restore()); // Restore all stubs/spies after each test
 
   it('should create a new shift successfully', async () => {
@@ -40,6 +40,35 @@ describe('CreateShift Function Test', () => {
     });
   });
 
+  it('Create fail if missing person parameter', async () => {
+    // Mock request body
+    const req = {
+      body: {
+        //person: "Alice Johnson",
+        start: new Date("2025-08-11T08:00:00Z"),
+        end: new Date("2025-08-11T16:00:00Z"),
+      },
+    };
+
+    // Stub Shift.prototype.save to simulate successful DB save
+    const saveStub = sinon.stub(Shift.prototype, 'save').resolvesThis();
+
+    // Mock response object
+    const res = {
+      status: sinon.stub().returnsThis(),
+      json: sinon.spy(),
+    };
+
+    // Call controller
+    await createShift(req, res);
+
+    // Assertions
+    expect(res.status.calledWith(400)).to.be.true;
+    expect(res.json.firstCall.args[0]).to.include({
+      message: 'Person field is required',
+    });
+  });
+  
   it('should return 500 if an error occurs', async () => {
     // Simulate error during save
     sinon.stub(Shift.prototype, 'save').throws(new Error('DB Error'));
@@ -67,7 +96,7 @@ describe('CreateShift Function Test', () => {
   });
 });
 
-describe('Update Function Test', () => {
+describe('Update Shift Function Test', () => {
   afterEach(() => sinon.restore());
 
   it('should update shift successfully', async () => {
@@ -145,7 +174,7 @@ describe('Update Function Test', () => {
   });
 });
 
-describe('GetShift Function Test', () => {
+describe('Get Shift Function Test', () => {
   afterEach(() => sinon.restore());
 
   it('should return all shifts', async () => {
@@ -199,7 +228,7 @@ describe('GetShift Function Test', () => {
   });
 });
 
-describe('DeleteShift Function Test', () => {
+describe('Delet eShift Function Test', () => {
   afterEach(() => sinon.restore());
 
   it('should delete a shift successfully', async () => {

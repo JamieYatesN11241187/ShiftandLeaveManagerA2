@@ -62,11 +62,13 @@ const updateOvertimeRequest = async (req, res) => {
 // @access  Private
 const deleteOvertimeRequest = async (req, res) => {
     try {
-        const overtimeRequest = await OvertimeRequest.findById(req.params.id);
+        //const overtimeRequest = await OvertimeRequest.findById(req.params.id);
+        const overtimeRequest = await OvertimeRequest.findByIdAndDelete(req.params.id);
 
         if (overtimeRequest) {
-            await OvertimeRequest.findByIdAndDelete(req.params.id);
-            res.json({ message: 'Overtime request removed' });
+            // await OvertimeRequest.findByIdAndDelete(req.params.id);
+            //res.json({ message: 'Overtime request removed' });
+            return res.status(200).json({ message: 'Overtime request removed' });            
         } else {
             res.status(404).json({ message: 'Overtime request not found' });
         }
