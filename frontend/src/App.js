@@ -7,14 +7,17 @@ import Roster from "./pages/Roster";
 import LeaveRequests from "./pages/LeaveRequests";
 import OvertimeRequests from "./pages/OvertimeRequests";
 import LandingPage from "./pages/LandingPage";
+import Footer from "./components/Footer";
 
 function AppWrapper() {
   const location = useLocation();
-  const hideNavbar = location.pathname === "/"; // Hide navbar only on landing page
+  const isLandingPage = location.pathname === "/"; // Landing page path
 
   return (
     <>
-      {!hideNavbar && <Navbar />}
+      {/* Navbar (hide on landing page) */}
+      {!isLandingPage && <Navbar />}
+
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -24,9 +27,13 @@ function AppWrapper() {
         <Route path="/overtime-requests" element={<OvertimeRequests />} />
         <Route path="/" element={<LandingPage />} />
       </Routes>
+
+      {/* Footer (hide on landing page) */}
+      {!isLandingPage && <Footer />}
     </>
   );
 }
+
 
 export default function App() {
   return (
