@@ -46,11 +46,11 @@ const labelStyle = {
 // Button styling
 const buttonStyle = {
     padding: '8px 16px',
-    backgroundColor: '#4caf50',
+    backgroundColor: 'rgba(238, 127, 0, 1)',
     color: 'white',
     border: 'none',
     borderRadius: '4px',
-    cursor: 'pointer'
+    cursor: 'pointer',
 };
 
 // Layout styles
@@ -110,34 +110,6 @@ const Calendar = () => {
             fetchUsers();
         }
     }, [user, setUser]);
-
-    // Calendar configuration
-    /*    const config = {
-            viewType: "Week",
-            durationBarVisible: false,
-            timeRangeSelectedHandling: "Enabled",
-       
-               // Right-click context menu
-               contextMenu: new DayPilot.Menu({
-                   items: [
-                       {
-                           text: "Delete",
-                           onClick: async args => {
-                               const confirmed = window.confirm("Are you sure you want to delete this shift?");
-                               if (!confirmed) return;
-                               await deleteShift(args.source.data.id);
-                           },
-                       },
-                       { text: "-" },
-                       {
-                           text: "Edit...",
-                           onClick: async args => {
-                               await editShift(args.source);
-                           }
-                       }
-                   ]
-               })
-        }; */
 
     // Calendar configuration
     const config = {
@@ -313,7 +285,7 @@ const Calendar = () => {
                         {/* Action buttons */}
                         <div style={{ marginTop: '1rem' }}>
                             <button
-                                style={buttonStyle}
+                                style={{ ...buttonStyle, padding: '8px 16px'}}
                                 onClick={async () => {
                                     if (!editFormData.person || !editFormData.start || !editFormData.end) {
                                         alert("Please fill in all fields.");
@@ -354,7 +326,7 @@ const Calendar = () => {
             {formVisible && user && user?.role === "manager" && (
                 <div style={overlayStyle}>
                     <div style={modalStyle}>
-                        <h3 style={{ marginBottom: '1rem' }}>Create Time</h3>
+                        <h3 style={{ marginBottom: '1rem' }}>Create shift</h3>
 
                         {/* Form fields */}
                         <label style={labelStyle}>Person:
@@ -410,7 +382,7 @@ const Calendar = () => {
                                     setFormData({ person: '', start: '', end: '' });
                                     fetchShifts();
                                 } catch (error) {
-                                    alert('Failed to create Shift. In Roster returns.');
+                                    alert('Failed to create Shift. Please try again.');
                                     console.error(error);
                                 }
                             }}>
@@ -429,7 +401,7 @@ const Calendar = () => {
 
             {/* Calendar UI Layout */}
             <div style={styles.wrap}>
-                <div style={styles.left}>
+                <div style={{...styles.left, marginLeft: "10px"}}>
                     {/* Date selector (week-based) */}
                     <DayPilotNavigator
                         selectMode={"Week"}
@@ -443,7 +415,7 @@ const Calendar = () => {
                     {/* Show Create Shift button for managers */}
                     {user && user?.role === "manager" && (
                         <button
-                            style={{ ...buttonStyle, marginBottom: "1rem" }}
+                            style={{ ...buttonStyle, marginTop: "12px", width: "100%"}}
                             onClick={() => setFormVisible(true)}
                         >
                             Create Shift

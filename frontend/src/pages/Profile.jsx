@@ -74,7 +74,7 @@ const Profile = () => {
       });
 
       // Notify success with updated values
-      alert(`Profile updated successfully!\n\nName: ${formData.name}\nEmail: ${formData.email}\nRole: ${formData.role}\nAddress: ${formData.address}`);
+      alert(`Profile updated successfully!\n\nName: ${formData.name}\nEmail: ${formData.email}\nRole: ${formData.role}`);
 
       // If a new token is returned, update both local storage and context
       if (response.data.token) {
@@ -137,28 +137,18 @@ const Profile = () => {
           <option value="worker">Worker</option>
         </select>
 
-        {/* Address input field */}
-        <input
-          type="text"
-          placeholder="Address"
-          name="address"
-          value={formData.address}
-          onChange={handleChange}
-          className="w-full mb-4 p-2 border rounded"
-        />
-
         {/* Undo/Redo Buttons */}
         <div className="flex justify-between mb-4">
-          <button type="button" onClick={undo} disabled={!canUndo} className="bg-green-400 text-white p-2 rounded disabled:opacity-50">
+          <button type="button" onClick={undo} disabled={!canUndo} className="bg-blue-400 text-white p-2 rounded disabled:opacity-50">
             Undo
           </button>
-          <button type="button" onClick={redo} disabled={!canRedo} className="bg-green-400 text-white p-2 rounded disabled:opacity-50">
+          <button type="button" onClick={redo} disabled={!canRedo} className="bg-blue-400 text-white p-2 rounded disabled:opacity-50">
             Redo
           </button>
         </div>
 
         {/* Submit button */}
-        <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">
+        <button type="submit" className="w-full bg-orange-400 text-white p-2 rounded">
           {loading ? 'Updating...' : 'Update Profile'}
         </button>
       </form>
