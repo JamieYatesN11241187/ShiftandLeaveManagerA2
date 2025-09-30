@@ -71,7 +71,7 @@ const Calendar = () => {
     const { user, setUser } = useAuth(); // Get user and updater from context
     const today = new Date();
 
-    const [calendar, setCalendar] = useState(null); // Reference to calendar control
+    const [, setCalendar] = useState(null); // Reference to calendar control
     const [startDate, setStartDate] = useState(today.toISOString().split("T")[0]); // Selected start date
     const [formVisible, setFormVisible] = useState(false); // Show/hide creation modal
     const [formData, setFormData] = useState({ person: '', start: '', end: '' }); // New shift form state
