@@ -15,7 +15,7 @@ const Navbar = () => {
   // Shared styles for tabs
   const tabClasses = ({ isActive }) =>
     `px-4 py-2 rounded-full font-medium transition
-     ${isActive ? "bg-orange-400 text-blue-900" : "text-white/90 hover:text-white hover:bg-white/10"}`;
+     ${isActive ? "bg-orange-400 text-white-900" : "text-white/90 hover:text-white hover:bg-white/10"}`;
 
   const closeMobile = () => setIsOpen(false);
 

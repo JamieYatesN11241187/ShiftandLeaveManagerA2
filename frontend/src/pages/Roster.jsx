@@ -236,14 +236,6 @@ const Calendar = () => {
                 return;
             }
 
-            const mappedShifts = data.map(ev => ({
-                id: ev._id,
-                text: ev.person || "Unassigned",
-                start: ev.start,
-                end: ev.end,
-                backColor: "#6aa84f"
-            }));
-
             if (!data || data.length === 0) {
                 setShifts([]);
                 return;
