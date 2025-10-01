@@ -1,0 +1,917 @@
+{
+	"info": {
+		"_postman_id": "1e6e9f60-a80b-42bb-aafd-b00131d07d83",
+		"name": "ShiftandLeaveManagerA2",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "48317405",
+		"_collection_link": "https://ahmedazzouzqut-4447556.postman.co/workspace/Ahmed-Azzouz's-Workspace~a1aa3aff-faf4-4952-8226-beff57577832/collection/48317405-1e6e9f60-a80b-42bb-aafd-b00131d07d83?action=share&source=collection_link&creator=48317405"
+	},
+	"item": [
+		{
+			"name": "Register",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let response = pm.response.json();\r",
+							"\r",
+							"// Test for successful registration \r",
+							"pm.test(\"Status code is 201 (Created)\", function (){ \r",
+							"pm.response.to.have.status(201); \r",
+							"});\r",
+							"\r",
+							"//    \"name\": \"Bruce Banner\",\"email\": \"bruce.banner@test.com\"\r",
+							"//\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(response.name).to.eql('Harry Potter');\r",
+							"    pm.expect(response.role).to.eql('worker');\r",
+							"     pm.expect(response.email).to.eql('harry.potter@test.com'); \r",
+							"    pm.expect(response.dob).to.eql('1985-05-01T00:00:00.000Z'); \r",
+							"});\r",
+							"// Save JWT if returned \r",
+							"if (response.token) { pm.environment.set(\"jwt_token\", response.token); \r",
+							"console.log(\"JWT Token saved from registration response\"); }\r",
+							"else\r",
+							"{\r",
+							"        console.log(\"No JWT Token received from registration response\");\r",
+							"}\r",
+							"\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"Harry Potter\",\r\n    \"email\": \"harry.potter@test.com\",\r\n    \"role\": \"worker\",\r\n    \"dob\" : \"1985-05-01T00:00:00.000+00:00\",\r\n    \"password\": \"1234\"\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/auth/register",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Read Profile",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Parse the response body\r",
+							"let response = pm.response.json();\r",
+							"\r",
+							"// Basic test: status code should be 200\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"pm.response.to.have.status(200);\r",
+							"});\r",
+							"// test to check if the response body contains the correct data\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(response.name).to.eql('Harry Potter');\r",
+							"    pm.expect(response.email).to.eql('harry.potter@test.com');  \r",
+							"    //pm.expect(response.role).to.eql('Manager');    \r",
+							"});\r",
+							"pm.test(\"Response time is less than 200ms\", function () {\r",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5001/api/auth/profile",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"api",
+						"auth",
+						"profile"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Parse the response body\r",
+							"let response = pm.response.json();\r",
+							"\r",
+							"// Basic test: status code should be 200\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"pm.response.to.have.status(200);\r",
+							"});\r",
+							"// test to check if the response body contains the correct data\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(response.name).to.eql('Harry Potter');\r",
+							"    pm.expect(response.email).to.eql('harry.potter@test.com');  \r",
+							"    //pm.expect(response.role).to.eql('Manager');    \r",
+							"});\r",
+							"pm.test(\"Response time is less than 200ms\", function () {\r",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);\r",
+							"});\r",
+							"\r",
+							"// Save JWT token to environment variable (adjust key as needed)\r",
+							"if (response.token) {\r",
+							"pm.environment.set(\"jwt_token\", response.token);\r",
+							"console.log(\"JWT Token saved to environment\");\r",
+							"} else {\r",
+							"console.warn(\"No token found in response!\");\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \r\n    \"email\": \"harry.potter@test.com\",\r\n    \"password\": \"1234\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5001/api/auth/login",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"api",
+						"auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Leave",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const responseJson = pm.response.json();\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(responseJson.person).to.eql('Harry Potter');\r",
+							"    pm.expect(responseJson.status).to.eql('pending');\r",
+							"});\r",
+							"// Save JWT token to environment variable (adjust key as needed)\r",
+							"\r",
+							"pm.environment.set(\"_id\", responseJson._id);\r",
+							"console.log(\"id added to environment\");\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"start\": \"2025-10-10\",\r\n     \"end\": \"2025-10-10\",\r\n     \"person\": \"Harry Potter\",\r\n     \"status\": \"pending\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5001/api/leave-requests",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"api",
+						"leave-requests"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "View Leave",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5001/api/leave-requests",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"api",
+						"leave-requests"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Leave",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Parse the response body\r",
+							"let response = pm.response.json();\r",
+							"\r",
+							"// Basic test: status code should be 200\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"pm.response.to.have.status(200);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"start\": \"2025-11-11\",\r\n     \"end\": \"2025-11-11\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5001/api/leave-requests/{{_id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"api",
+						"leave-requests",
+						"{{_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Leave",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Parse the response body\r",
+							"let response = pm.response.json();\r",
+							"\r",
+							"// Basic test: status code should be 200\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"pm.response.to.have.status(200);\r",
+							"});\r",
+							"// test to check if the response body contains the correct data\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(response.message).to.eql('Leave request deleted successfully.');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5001/api/leave-requests/{{_id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"api",
+						"leave-requests",
+						"{{_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "New Request",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Update Profile",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json()\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"// test to check if the response body contains the correct data\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    const response = pm.response.json();\r",
+							"    pm.expect(response.name).to.eql('Bruce Banner');\r",
+							"    pm.expect(response.email).to.eql('bruce.banner@test.com');  \r",
+							"    pm.expect(response.role).to.eql('Manager');    \r",
+							"    pm.expect(response.address).to.eql('12 test street'); \r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"Bruce Banner\",\r\n    \"email\": \"bruce.banner@test.com\",\r\n    \"role\": \"Manager\",\r\n    \"address\": \"12 test street\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/auth/profile",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"profile"
+					],
+					"query": [
+						{
+							"key": "",
+							"value": null,
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Shift",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const responseJson = pm.response.json();\r",
+							"pm.test(\"Status code is 201\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(responseJson.person).to.eql('Harry Potter');\r",
+							"});\r",
+							"pm.environment.set(\"Shiftid\", responseJson._id);\r",
+							"console.log(\"id added to environment\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n        \"person\": \"Harry Potter\",\r\n        \"start\": \"2025-09-10T08:00:00.000Z\",\r\n        \"end\": \"2025-09-10T17:00:00.000Z\"\r\n\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/shifts",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"shifts"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "View Shift",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseURL}}/api/shifts",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"shifts"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Shift",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const responseJson = pm.response.json();\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(responseJson.person).to.eql('Harry Potter');\r",
+							"    pm.expect(responseJson.start).to.eql('2025-09-11T08:00:00.000Z');\r",
+							"    pm.expect(responseJson.end).to.eql('2025-09-11T17:00:00.000Z');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n        \"start\": \"2025-09-09T08:00:00.000Z\",\r\n        \"end\": \"2025-09-09T17:00:00.000Z\"\r\n\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/shifts/{{Shiftid}}",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"shifts",
+						"{{Shiftid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Shift",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Parse the response body\r",
+							"let response = pm.response.json();\r",
+							"\r",
+							"// Basic test: status code should be 200\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"pm.response.to.have.status(200);\r",
+							"});\r",
+							"// test to check if the response body contains the correct data\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(response.message).to.eql('Shift deleted successfully');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "    {\r\n        \"_id\": \"\"\r\n    }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/shifts/{{Shiftid}}",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"shifts",
+						"{{Shiftid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Read Overtime",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:5001/api/overtime-requests",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"api",
+						"overtime-requests"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Overtime",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const responseJson = pm.response.json();\r",
+							"pm.test(\"Status code is 201\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(responseJson.person).to.eql('Harry Potter');\r",
+							"    pm.expect(responseJson.hoursRequested).to.eql(2);\r",
+							"    pm.expect(responseJson.reason).to.eql('Test reason');\r",
+							"    pm.expect(responseJson.status).to.eql('pending');\r",
+							"    \r",
+							"});\r",
+							"pm.environment.set(\"Overtimeid\", responseJson._id);\r",
+							"console.log(\"id added to environment\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"person\": \"Harry Potter\",\r\n    \"shiftTimings\": \"2025-09-10T08:00:00.000Z - 2025-09-10T17:00:00.000Z\",\r\n    \"hoursRequested\": 2,\r\n    \"reason\": \"Test reason\",\r\n    \"status\": \"pending\"\r\n    }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/overtime-requests",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"overtime-requests"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Overtime",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const responseJson = pm.response.json();\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(responseJson.comment).to.eql('Test comment');\r",
+							"    pm.expect(responseJson.status).to.eql('approved');   \r",
+							"});\r",
+							"pm.environment.set(\"Overtimeid\", responseJson._id);\r",
+							"console.log(\"id added to environment\");\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"status\": \"approved\",\r\n    \"comments\": \"Test comment\"\r\n    }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/overtime-requests/{{Overtimeid}}",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"overtime-requests",
+						"{{Overtimeid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Overtime",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Parse the response body\r",
+							"let response = pm.response.json();\r",
+							"\r",
+							"// Basic test: status code should be 200\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"pm.response.to.have.status(200);\r",
+							"});\r",
+							"// test to check if the response body contains the correct data\r",
+							"pm.test(\"Body is correct\", function () {\r",
+							"    pm.expect(response.message).to.eql('Overtime request removed');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseURL}}/api/overtime-requests/{{Overtimeid}}",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"overtime-requests",
+						"{{Overtimeid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "View Overtime",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwt_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseURL}}/api/overtime-requests",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"overtime-requests"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseURL",
+			"value": "",
+			"type": "default"
+		}
+	]
+}
