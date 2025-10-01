@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext'; // Access authentication context
 import axiosInstance from '../axiosConfig'; // Axios instance with base URL and config
+import { useMemento } from '../hooks/useMemento';
 
 const Profile = () => {
   const { user, setUser } = useAuth(); // Get user and updater function from context
 
-  // Local state for form input values
-  const [formData, setFormData] = useState({
+  // Memento-based state management for form data
+  const { state: formData, setState: setFormData, reset, undo, redo, canUndo, canRedo } = useMemento({
     name: '',
     email: '',
     role: '',
@@ -24,13 +25,14 @@ const Profile = () => {
           headers: { Authorization: `Bearer ${user.token}` }, // Pass token for authentication
         });
 
-        // Populate form with fetched profile data
-        setFormData({
+        // Populate form with fetched profile data and reset memento history
+        const profileData = {
           name: response.data.name,
           email: response.data.email,
           role: response.data.role || '',
           address: response.data.address || '',
-        });
+        };
+        reset(profileData);
       } catch (error) {
         alert('Failed to fetch profile. Please try again.');
       } finally {
@@ -39,11 +41,32 @@ const Profile = () => {
     };
 
     if (user) fetchProfile(); // Only fetch if user is authenticated
-  }, [user]);
+  }, [user, reset]);
+
+  // Handle form input changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    // Proper case for name
+    if (name === 'name') {
+      const properCaseName = value.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+      setFormData({ ...formData, [name]: properCaseName });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+  };
 
   // Handle form submission to update profile
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      alert('Please enter a valid email address.');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await axiosInstance.put('/api/auth/profile', formData, {
@@ -51,7 +74,7 @@ const Profile = () => {
       });
 
       // Notify success with updated values
-      alert(`Profile updated successfully!\n\nName: ${formData.name}\nEmail: ${formData.email}\nRole: ${formData.role}\nAddress: ${formData.address}`);
+      alert(`Profile updated successfully!\n\nName: ${formData.name}\nEmail: ${formData.email}\nRole: ${formData.role}`);
 
       // If a new token is returned, update both local storage and context
       if (response.data.token) {
@@ -60,6 +83,9 @@ const Profile = () => {
       } else {
         setUser({ ...user, role: formData.role });
       }
+
+      // Reset memento with the new submitted data
+      reset(formData);
     } catch (error) {
       alert('Failed to update profile. Please try again.');
       console.log(error); // Log error for debugging
@@ -82,8 +108,9 @@ const Profile = () => {
         <input
           type="text"
           placeholder="Name"
+          name="name"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
         />
 
@@ -91,31 +118,37 @@ const Profile = () => {
         <input
           type="email"
           placeholder="Email"
+          name="email"
           value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
         />
 
-        {/* Role input field (not editable in most cases, could be restricted) */}
-        <input
-          type="text"
-          placeholder="role"
+        {/* Role dropdown */}
+        <select
+          name="role"
           value={formData.role}
-          onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
-        />
+          required
+        >
+          <option value="" disabled>Select a role</option>
+          <option value="manager">Manager</option>
+          <option value="worker">Worker</option>
+        </select>
 
-        {/* Address input field */}
-        <input
-          type="text"
-          placeholder="Address"
-          value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-        />
+        {/* Undo/Redo Buttons */}
+        <div className="flex justify-between mb-4">
+          <button type="button" onClick={undo} disabled={!canUndo} className="bg-blue-400 text-white p-2 rounded disabled:opacity-50">
+            Undo
+          </button>
+          <button type="button" onClick={redo} disabled={!canRedo} className="bg-blue-400 text-white p-2 rounded disabled:opacity-50">
+            Redo
+          </button>
+        </div>
 
         {/* Submit button */}
-        <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">
+        <button type="submit" className="w-full bg-orange-400 text-white p-2 rounded">
           {loading ? 'Updating...' : 'Update Profile'}
         </button>
       </form>

@@ -20,7 +20,7 @@ exports.createLeaveRequest = async (req, res) => {
         await leaveRequest.save(); // Save the new leave request to the database
         res.status(201).json(leaveRequest); // Return the newly created leave request
     } catch (error) {
-        console.error("Create error:", error);
+        //console.error("Create error:", error);
         res.status(500).json({ message: 'Failed to create leave request.', error: error.message });
     }
 };
@@ -62,7 +62,7 @@ exports.updateLeaveRequest = async (req, res) => {
         const updatedLeaveRequest = await leaveRequest.save();
         res.json(updatedLeaveRequest);
     } catch (error) {
-        console.error("Update error:", error);
+       // console.error("Update error:", error);
         res.status(500).json({ message: 'Failed to update leave request', error: error.message });
     }
 };
@@ -89,7 +89,7 @@ exports.deleteLeaveRequest = async (req, res) => {
         }
         res.status(200).json({ message: "Leave request deleted successfully." }); // Confirm deletion
     } catch (error) {
-        console.error("Delete error:", error);
+        //console.error("Delete error:", error);
         res.status(500).json({ error: "Failed to delete leave request." });
     }
 };

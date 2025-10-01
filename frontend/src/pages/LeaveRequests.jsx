@@ -1,85 +1,180 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext'; // Access authenticated user
-import axiosInstance from '../axiosConfig'; // Axios instance with base config
+import { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import axiosInstance from "../axiosConfig";
+import { useMemento } from "../hooks/useMemento";
+const btn = "px-3 py-1 rounded text-white text-sm font-medium";
+const btnPrimary = `${btn} bg-blue-600 hover:bg-blue-500`;
+const btnDanger = `${btn} bg-red-500 hover:bg-red-600`;
+const btnSecondary = `${btn} bg-gray-300 text-gray-800 hover:bg-gray-400`;
+const input = "w-full p-2 border rounded text-sm";
+const card = "bg-white p-6 rounded shadow";
 
+//=== State Base ===
+class LeaveRequestState {
+    constructor(context) {
+        this.context = context; // eference to LeaveRequest 
+    }
+    approve() {}
+    reject() {}
+    renderActions() {
+        return null;
+    }
+}
+
+// === Concrete States ===
+class PendingState extends LeaveRequestState {
+    renderActions() {
+        return (
+            <div className="space-x-2">
+                <button onClick={() => this.approve()} className={btnPrimary}>
+                    Approve
+                </button>
+                <button onClick={() => this.reject()} className={btnDanger}>
+                    Reject
+                </button>
+            </div>
+        );
+    }
+    approve() {
+        this.context.transitionTo(new ApprovedState(this.context));
+    }
+    reject() {
+        this.context.transitionTo(new RejectedState(this.context));
+    }
+}
+class ApprovedState extends LeaveRequestState {
+    renderActions() {
+        return (
+            <button onClick={() => this.reject()} className={btnDanger}>
+                Reject
+            </button>
+        );
+    }
+    reject() {
+        this.context.transitionTo(new RejectedState(this.context));
+    }
+}
+
+class RejectedState extends LeaveRequestState {
+    renderActions() {
+        return (
+            <button onClick={() => this.approve()} className={btnPrimary}>
+                Approve
+            </button>
+        );
+    }
+
+    approve() {
+        this.context.transitionTo(new ApprovedState(this.context));
+    }
+}
+
+// === Context ===
+class LeaveRequest {
+    constructor(data, handleStatusUpdate) {
+        this.id = data._id;
+        this.person = data.person;
+        this.start = data.start;
+        this.end = data.end;
+        this.status = data.status;
+        this.handleStatusUpdate = handleStatusUpdate;
+
+        switch (this.status) {
+            case "approved":
+                this.state = new ApprovedState(this);
+                break;
+            case "rejected":
+                this.state = new RejectedState(this);
+                break;
+            default:
+                this.state = new PendingState(this);
+        }
+    }
+    transitionTo(state) {
+        this.state = state;
+        const newStatus = this.getStatus();
+        this.status = newStatus; // sync local status
+        this.handleStatusUpdate(this.id, newStatus);
+    }
+    getStatus() {
+        if (this.state instanceof ApprovedState) return "approved";
+        if (this.state instanceof RejectedState) return "rejected";
+        return "pending";
+    }
+
+    renderActions() {
+        return this.state.renderActions();
+    }
+}
+
+// === Main Component ===
 const LeaveRequests = () => {
-    const { user } = useAuth(); // Get authenticated user from context
-    const [requests, setRequests] = useState([]); // Store list of leave requests
-    const [formVisible, setFormVisible] = useState(false); // Toggle for modal form visibility
-    const [formData, setFormData] = useState({ start: '', end: '', person: '', status: 'pending' }); // Form input state
+    const { user } = useAuth();
+    const [requests, setRequests] = useState([]);
+    const [formVisible, setFormVisible] = useState(false);
+    const {
+        state: formData,
+        setState: setFormData,
+        reset,
+        undo,
+        redo,
+        canUndo,
+        canRedo,
+    } = useMemento({
+        start: "",
+        end: "",
+        person: "",
+        status: "pending",
+    });
 
     useEffect(() => {
-        // Fetch all leave requests from the server
-        const fetchRequests = async () => {
+        if (!user?.token) return;
+
+        const fetchData = async () => {
             try {
-                const response = await axiosInstance.get('/api/leave-requests', {
-                    headers: { Authorization: `Bearer ${user.token}` }
+                const [reqRes, profileRes] = await Promise.all([
+                    axiosInstance.get("/api/leave-requests", {
+                        headers: { Authorization: `Bearer ${user.token}` },
+                    }),
+                    axiosInstance.get("/api/auth/profile", {
+                        headers: { Authorization: `Bearer ${user.token}` },
+                    }),
+                ]);
+
+                setRequests(reqRes.data);
+                reset({
+                    start: "",
+                    end: "",
+                    person: profileRes.data.name,
+                    status: "pending",
                 });
-                setRequests(response.data); // Populate state with response
-            } catch (error) {
-                setRequests([]); // Fallback in case of error
+            } catch {
+                console.error("Failed to load data");
             }
         };
 
-        // Fetch user profile to populate "person" field in form
-        const fetchUserProfile = async () => {
-            try {
-                const response = await axiosInstance.get('/api/auth/profile', {
-                    headers: { Authorization: `Bearer ${user.token}` }
-                });
-                setFormData(prev => ({
-                    ...prev,
-                    person: response.data.name
-                }));
-            } catch (error) {
-                alert("Failed to fetch user profile");
-            }
-        };
+        fetchData();
+    }, [user, reset]);
 
-        // Run both fetch functions if token is present
-        if (user?.token) {
-            fetchRequests();
-            fetchUserProfile();
-        }
-    }, [user]);
-
-    // Handle creation of a new leave request
     const handleCreateRequest = async () => {
         if (!formData.start || !formData.end) {
             alert("Please fill in all fields.");
             return;
         }
-
         try {
-            await axiosInstance.post(
-                '/api/leave-requests',
-                {
-                    person: formData.person,
-                    start: formData.start,
-                    end: formData.end,
-                    status: 'pending'
-                },
-                {
-                    headers: { Authorization: `Bearer ${user.token}` }
-                }
-            );
-
-            // Reset form and hide modal
-            setFormVisible(false);
-            setFormData({ start: '', end: '', person: formData.person, status: 'pending' });
-
-            // Refresh requests after creation
-            const response = await axiosInstance.get('/api/leave-requests', {
-                headers: { Authorization: `Bearer ${user.token}` }
+            await axiosInstance.post("/api/leave-requests", formData, {
+                headers: { Authorization: `Bearer ${user.token}` },
             });
-            setRequests(response.data);
-        } catch (error) {
-            console.error("Create error:", error);
+            setFormVisible(false);
+            reset({ ...formData, start: "", end: "" });
+            const refreshed = await axiosInstance.get("/api/leave-requests", {
+                headers: { Authorization: `Bearer ${user.token}` },
+            });
+            setRequests(refreshed.data);
+        } catch {
             alert("Failed to create leave request.");
         }
     };
-
-    // Handle updating leave request status (for managers)
     const handleStatusUpdate = async (id, newStatus) => {
         try {
             await axiosInstance.put(
@@ -87,153 +182,155 @@ const LeaveRequests = () => {
                 { status: newStatus },
                 { headers: { Authorization: `Bearer ${user.token}` } }
             );
-            // Update local state after success
-            setRequests(prev =>
-                prev.map(r => (r._id === id ? { ...r, status: newStatus } : r))
+            setRequests((prev) =>
+                prev.map((r) => (r._id === id ? { ...r, status: newStatus } : r))
             );
-        } catch (error) {
+        } catch {
             alert("Failed to update status.");
         }
     };
 
-    // Handle deletion of a leave request (for non-managers)
     const handleDelete = async (id) => {
         try {
             await axiosInstance.delete(`/api/leave-requests/${id}`, {
-                headers: { Authorization: `Bearer ${user.token}` }
+                headers: { Authorization: `Bearer ${user.token}` },
             });
-            // Remove deleted request from state
-            setRequests(prev => prev.filter(r => r._id !== id));
-        } catch (error) {
+            setRequests((prev) => prev.filter((r) => r._id !== id));
+        } catch {
             alert("Failed to delete request.");
         }
     };
-
+    const formatDate = (d) => new Date(d).toLocaleDateString("en-GB");
     return (
-        <div className="max-w-3xl mx-auto mt-10">
-            <h2 className="text-2xl font-bold mb-6 text-center">Leave Requests</h2>
+        <div className="bg-gray-100 min-h-screen p-6">
+            <div className="max-w-4xl mx-auto">
+                <h2 className="text-2xl font-bold mb-4 text-center text-blue-600">
+                    Leave Requests
+                </h2>
 
-            {/* Show create button only for non-managers */}
-            {user.role !== 'manager' && (
-                <div className="mb-4 text-center">
-                    <button
-                        onClick={() => setFormVisible(true)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded"
-                    >
-                        Create Leave Request
-                    </button>
-                </div>
-            )}
-
-            {/* Table displaying all leave requests */}
-            <table className="min-w-full bg-white shadow rounded">
-                <thead>
-                    <tr>
-                        <th className="py-2 px-4 border-b">Employee</th>
-                        <th className="py-2 px-4 border-b">Dates</th>
-                        <th className="py-2 px-4 border-b">Status</th>
-                        {user.role !== 'manager' && <th className="py-2 px-4 border-b">Actions</th>}
-                        {user.role === 'manager' && <th className="py-2 px-4 border-b">Update Status</th>}
-                    </tr>
-                </thead>
-                <tbody>
-                    {requests.length === 0 ? (
-                        <tr>
-                            <td colSpan={5} className="text-center py-6 text-gray-500">No leave requests found.</td>
-                        </tr>
-                    ) : (
-                        requests.map(req => (
-                            <tr key={req._id}>
-                                <td className="py-2 px-4 border-b">{req.person}</td>
-                                <td className="py-2 px-4 border-b">{req.start} - {req.end}</td>
-                                <td className="py-2 px-4 border-b">
-                                    {/* Colored status badge */}
-                                    <span className={
-                                        req.status === 'approved'
-                                            ? 'bg-green-100 text-green-800 px-2 py-1 rounded text-xs'
-                                            : req.status === 'pending'
-                                                ? 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs'
-                                                : 'bg-red-100 text-red-800 px-2 py-1 rounded text-xs'
-                                    }>
-                                        {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
-                                    </span>
-                                </td>
-                                {/* Delete action for non-managers */}
-                                {user.role !== 'manager' && (
-                                    <td className="py-2 px-4 border-b">
-                                        <button
-                                            onClick={() => handleDelete(req._id)}
-                                            className="text-red-500 hover:underline mr-2"
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                )}
-                                {/* Status update actions for managers */}
-                                {user.role === 'manager' && (
-                                    <td className="py-2 px-4 border-b">
-                                        <button
-                                            onClick={() => handleStatusUpdate(req._id, 'approved')}
-                                            className="text-green-600 hover:underline mr-2"
-                                        >
-                                            Approve
-                                        </button>
-                                        <button
-                                            onClick={() => handleStatusUpdate(req._id, 'rejected')}
-                                            className="text-red-600 hover:underline"
-                                        >
-                                            Reject
-                                        </button>
-                                    </td>
-                                )}
+                {user.role !== "manager" && (
+                    <div className="mb-4 text-center">
+                        <button
+                            onClick={() => setFormVisible(true)}
+                            className={btnPrimary}
+                        >
+                            New Request
+                        </button>
+                    </div>
+                )}
+                <div className="bg-white shadow rounded-md overflow-hidden">
+                    <table className="w-full text-sm">
+                        <thead className="bg-blue-600 text-white">
+                            <tr>
+                                <th className="p-3">Employee</th>
+                                <th className="p-3">Start Date</th>
+                                <th className="p-3">End Date</th>
+                                <th className="p-3">Status</th>
+                                {user.role !== "manager" && <th className="p-3">Actions</th>}
+                                {user.role === "manager" && <th className="p-3">Update</th>}
                             </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
-
-            {/* Modal form for creating leave requests (non-managers only) */}
-            {formVisible && user.role !== 'manager' && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-                    <div className="bg-white p-6 rounded shadow-md w-96">
-                        <h3 className="text-lg font-bold mb-4">Create Leave Request</h3>
-                        <label className="block mb-2">
-                            Start Date:
-                            <input
-                                type="date"
-                                value={formData.start}
-                                onChange={e => setFormData({ ...formData, start: e.target.value })}
-                                className="w-full p-2 border rounded mt-1"
-                            />
-                        </label>
-                        <label className="block mb-2">
-                            End Date:
-                            <input
-                                type="date"
-                                value={formData.end}
-                                onChange={e => setFormData({ ...formData, end: e.target.value })}
-                                className="w-full p-2 border rounded mt-1"
-                            />
-                        </label>
-                        <div className="mt-4 flex justify-end">
-                            <button
-                                onClick={handleCreateRequest}
-                                className="bg-blue-600 text-white px-4 py-2 rounded mr-2"
-                            >
-                                Submit
-                            </button>
-                            <button
-                                onClick={() => setFormVisible(false)}
-                                className="bg-gray-300 text-black px-4 py-2 rounded"
-                            >
-                                Cancel
-                            </button>
+                        </thead>
+                        <tbody>
+                            {requests.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="p-4 text-center text-gray-500">
+                                        No leave requests found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                requests.map((req) => {
+                                    const leaveRequest = new LeaveRequest(req, handleStatusUpdate);
+                                    return (
+                                        <tr key={leaveRequest.id} className="text-center border-b">
+                                            <td className="p-3">{leaveRequest.person}</td>
+                                            <td className="p-3">{formatDate(leaveRequest.start)}</td>
+                                            <td className="p-3">{formatDate(leaveRequest.end)}</td>
+                                            <td className="p-3">
+                                                <span
+                                                    className={`px-2 py-1 rounded text-xs font-medium ${
+                                                        leaveRequest.getStatus() === "approved"
+                                                            ? "bg-green-500 text-white"
+                                                            : leaveRequest.getStatus() === "pending"
+                                                            ? "bg-orange-400 text-white"
+                                                            : "bg-red-500 text-white"
+                                                    }`}
+                                                >
+                                                    {leaveRequest.getStatus()}
+                                                </span>
+                                            </td>
+                                            {user.role !== "manager" && (
+                                                <td className="p-3">
+                                                    {(leaveRequest.getStatus() === "approved" ||
+                                                        leaveRequest.getStatus() === "pending") && (
+                                                        <button
+                                                            onClick={() => handleDelete(leaveRequest.id)}
+                                                            className={btnDanger}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            )}
+                                            {user.role === "manager" && (
+                                                <td className="p-3">{leaveRequest.renderActions()}</td>
+                                            )}
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                {formVisible && user.role !== "manager" && (
+                    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                        <div className={`${card} max-w-md mx-auto`}>
+                            <h3 className="text-lg font-bold mb-4 text-blue-600">
+                                New Leave Request
+                            </h3>
+                            <div className="space-y-3">
+                                <input
+                                    type="date"
+                                    value={formData.start}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, start: e.target.value })
+                                    }
+                                    className={input}
+                                />
+                                <input
+                                    type="date"
+                                    value={formData.end}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, end: e.target.value })
+                                    }
+                                    className={input}
+                                />
+                            </div>
+                            <div className="mt-4 flex justify-between">
+                                <div>
+                                    <button type="button" onClick={undo} disabled={!canUndo} className="bg-green-400 text-white p-2 rounded disabled:opacity-50 mr-2">
+                                        Undo
+                                    </button>
+                                    <button type="button" onClick={redo} disabled={!canRedo} className="bg-green-400 text-white p-2 rounded disabled:opacity-50">
+                                        Redo
+                                    </button>
+                                </div>
+                                <div>
+                                    <button
+                                        onClick={() => setFormVisible(false)}
+                                        className={btnSecondary}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button onClick={handleCreateRequest} className={`${btnPrimary} ml-2`}>
+                                        Submit
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };
-
 export default LeaveRequests;
