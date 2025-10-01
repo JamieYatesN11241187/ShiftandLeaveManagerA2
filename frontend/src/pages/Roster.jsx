@@ -217,12 +217,19 @@ const Calendar = () => {
         }
     };
 
-
     // Fetch all shifts from the backend and map to DayPilot format
     const fetchShifts = async () => {
         try {
             const response = await axiosInstance.get('/api/shifts');
             const data = response.data;
+            const mappedShifts = data.map(ev =>
+                decorateShift({
+                    id: ev._id,
+                    person: ev.person || "Unassigned",
+                    start: ev.start,
+                    end: ev.end
+                })
+            );
 
             if (!data || data.length === 0) {
                 setShifts([]);
@@ -237,6 +244,12 @@ const Calendar = () => {
                 backColor: "#6aa84f"
             }));
 
+            if (!data || data.length === 0) {
+                setShifts([]);
+                return;
+            }
+
+
             setShifts(mappedShifts);
         } catch (error) {
             console.error("Failed to fetch shifts:", error);
@@ -244,6 +257,14 @@ const Calendar = () => {
         }
     };
 
+    // A decorator to add display text + colors to shifts
+    function decorateShift(shift) {
+        return {
+            ...shift,
+            text: shift.person === "unassigned" ? "[Available for pickup]" : shift.person,
+            backColor: shift.person === "unassigned" ? "#ffcc00" : "#6aa84f"
+        };
+    }
     useEffect(() => {
         fetchShifts();
     }, []);
