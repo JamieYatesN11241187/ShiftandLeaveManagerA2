@@ -2,6 +2,13 @@ import { DayPilot, DayPilotCalendar, DayPilotNavigator } from "@daypilot/daypilo
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
+import SwapIterator from "../utils/SwapIterator";
+import {
+    PickupShiftCommand,
+    DropShiftCommand,
+    RequestSwapCommand,
+    ApproveSwapCommand
+} from "../utils/Commands";
 
 // Modal overlay styling
 const overlayStyle = {
@@ -46,11 +53,11 @@ const labelStyle = {
 // Button styling
 const buttonStyle = {
     padding: '8px 16px',
-    backgroundColor: '#4caf50',
+    backgroundColor: 'rgba(238, 127, 0, 1)',
     color: 'white',
     border: 'none',
     borderRadius: '4px',
-    cursor: 'pointer'
+    cursor: 'pointer',
 };
 
 // Layout styles
@@ -71,15 +78,16 @@ const Calendar = () => {
     const { user, setUser } = useAuth(); // Get user and updater from context
     const today = new Date();
 
-    const [calendar, setCalendar] = useState(null); // Reference to calendar control
+    const [, setCalendar] = useState(null); // Reference to calendar control
     const [startDate, setStartDate] = useState(today.toISOString().split("T")[0]); // Selected start date
     const [formVisible, setFormVisible] = useState(false); // Show/hide creation modal
     const [formData, setFormData] = useState({ person: '', start: '', end: '' }); // New shift form state
     const [shifts, setShifts] = useState([]); // Array of shift events for calendar
+    const [users, setUsers] = useState([]); // Array of users for dropdown
 
     const [editModalVisible, setEditModalVisible] = useState(false); // Show/hide edit modal
     const [editFormData, setEditFormData] = useState({ id: '', person: '', start: '', end: '' }); // Edit shift form state
-    const [swapRequests, setSwapRequests] = useState([]); // Shift swap requests for sidebar
+    const [swapRequests, setSwapRequests] = useState([]); // Array of swap requests
 
     useEffect(() => {
         // Fetch user profile to prefill name and update role
@@ -88,16 +96,28 @@ const Calendar = () => {
                 const response = await axiosInstance.get('/api/auth/profile', {
                     headers: { Authorization: `Bearer ${user.token}` },
                 });
-                setFormData(prev => ({ ...prev, person: response.data.name }));
                 setUser(prev => ({ ...prev, role: response.data.role }));
             } catch (error) {
                 alert('Failed to fetch profile. Please try again.');
             }
         };
 
-        if (user && setUser) fetchProfile();
-    }, [user, setUser]);
+        const fetchUsers = async () => {
+            try {
+                const response = await axiosInstance.get('/api/auth/users', {
+                    headers: { Authorization: `Bearer ${user.token}` },
+                });
+                setUsers(response.data);
+            } catch (error) {
+                alert('Failed to fetch users. Please try again.');
+            }
+        };
 
+        if (user && setUser) {
+            fetchProfile();
+            fetchUsers();
+        }
+    }, [user, setUser]);
 
     // Calendar configuration
     const config = {
@@ -127,7 +147,6 @@ const Calendar = () => {
                         }
                     ];
                 } else if (user?.role === "worker") {
-                    // unassigned shifts → allow pickup
                     return [
                         {
                             text: "Pick Up Shift",
@@ -135,7 +154,7 @@ const Calendar = () => {
                                 const confirmed = window.confirm("Do you want to pick up this shift?");
                                 if (!confirmed) return;
                                 await pickupShift(args.source.data.id);
-                            }
+                            },
                         },
                         {
                             text: "Drop Shift",
@@ -143,7 +162,7 @@ const Calendar = () => {
                                 const confirmed = window.confirm("Do you want to drop this shift?");
                                 if (!confirmed) return;
                                 await dropShift(args.source.data.id);
-                            }
+                            },
                         },
                         {
                             text: "Request Swap",
@@ -160,10 +179,9 @@ const Calendar = () => {
                                 } catch (error) {
                                     alert(error.response?.data?.message || "Failed to request swap.");
                                 }
-                            }
+                            },
                         }
                     ];
-
                 } else {
                     return []; // no menu for other roles
                 }
@@ -207,18 +225,10 @@ const Calendar = () => {
     };
 
     const dropShift = async (shiftId) => {
-        if (!user || user?.role !== "worker") {
-            alert("Only workers can drop their own shifts.");
-            return;
-        }
 
         try {
-            await axiosInstance.put(
-                `/api/shifts/${shiftId}/drop`,
-                {}, // no body needed
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
-
+            const cmd = new DropShiftCommand(shiftId, user);
+            await cmd.execute();
             alert("Shift dropped successfully.");
             fetchShifts(); // Refresh calendar/shift list
         } catch (error) {
@@ -232,28 +242,9 @@ const Calendar = () => {
         }
     };
 
-    const pickupShift = async (shiftId) => {
-        if (user?.role !== "worker") {
-            alert("Only workers can pick up shifts.");
-            return;
-        }
-
-        try {
-            await axiosInstance.put(
-                `/api/shifts/${shiftId}/pickup`,
-                {},
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
-
-            alert("Shift picked up successfully.");
-            fetchShifts(); // refresh calendar
-        } catch (error) {
-            console.error("Failed to pick up shift:", error);
-            alert(error.response?.data?.message || "Failed to pick up shift.");
-        }
-    };
 
     // Fetch all swap requests
+
     const fetchSwaps = async () => {
         try {
             const response = await axiosInstance.get('/api/swaps/me', {
@@ -266,51 +257,77 @@ const Calendar = () => {
         }
     };
 
+
+
+    // A decorator to add display text + colors to shifts
+    function decorateShift(shift) {
+        return {
+            ...shift,
+            text: shift.person === "unassigned" ? "[Available for pickup]" : shift.person,
+            backColor: shift.person === "unassigned" ? "#ffcc00" : "#6aa84f"
+        };
+    }
+
+    //const fetchSwaps = async () => {
+    const requestSwap = async (shiftId) => {
+        try {
+            const cmd = new RequestSwapCommand(shiftId, user);
+            await cmd.execute();
+            alert("Swap request sent.");
+        } catch (error) {
+
+            alert("Failed to request swap.");
+        }
+    };
+
     // Approve/reject a swap
     const approveSwap = async (shiftId, swapId, action) => {
         try {
-            const response = await axiosInstance.put(
-                `/api/swaps/${shiftId}/approval`,
-                { swapId, action },
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
-
-            const updatedShift = response.data.shift;
-
-            setShifts(prev =>
-                prev.map(s => (s.id === updatedShift._id ? {
-                    id: updatedShift._id,
-                    text: updatedShift.person || "Unassigned",
-                    start: updatedShift.start,
-                    end: updatedShift.end,
-                    backColor: "#6aa84f"
-                } : s))
-            );
-
+            const cmd = new ApproveSwapCommand(shiftId, swapId, action, user);
+            await cmd.execute();
+            alert(`Swap ${action}ed.`);
             fetchSwaps();
         } catch (error) {
             console.error(`Failed to ${action} swap:`, error);
         }
     };
 
+    const pickupShift = async (shiftId) => {
+
+        try {
+            const cmd = new PickupShiftCommand(shiftId, user);
+            await cmd.execute();
+            alert("Shift picked up successfully.");
+            fetchShifts(); // refresh calendar
+        } catch (error) {
+            console.error("Failed to pick up shift:", error);
+            alert("Failed to pick up shift.");
+        }
+    };
     // Fetch all shifts from the backend and map to DayPilot format
     const fetchShifts = async () => {
         try {
             const response = await axiosInstance.get('/api/shifts');
             const data = response.data;
+            const mappedShifts = data.map(ev =>
+                decorateShift({
+                    id: ev._id,
+                    person: ev.person || "Unassigned",
+                    start: ev.start,
+                    end: ev.end
+                })
+            );
 
             if (!data || data.length === 0) {
                 setShifts([]);
                 return;
             }
 
-            const mappedShifts = data.map(ev => ({
-                id: ev._id,
-                text: ev.person || "Unassigned",
-                start: ev.start,
-                end: ev.end,
-                backColor: "#6aa84f"
-            }));
+            if (!data || data.length === 0) {
+                setShifts([]);
+                return;
+            }
+
 
             setShifts(mappedShifts);
         } catch (error) {
@@ -319,6 +336,14 @@ const Calendar = () => {
         }
     };
 
+    // A decorator to add display text + colors to shifts
+    function decorateShift(shift) {
+        return {
+            ...shift,
+            text: shift.person === "unassigned" ? "[Available for pickup]" : shift.person,
+            backColor: shift.person === "unassigned" ? "#ffcc00" : "#6aa84f"
+        };
+    }
     useEffect(() => {
         if (user?.token) {
             fetchShifts();
@@ -363,7 +388,7 @@ const Calendar = () => {
                         {/* Action buttons */}
                         <div style={{ marginTop: '1rem' }}>
                             <button
-                                style={buttonStyle}
+                                style={{ ...buttonStyle, padding: '8px 16px' }}
                                 onClick={async () => {
                                     if (!editFormData.person || !editFormData.start || !editFormData.end) {
                                         alert("Please fill in all fields.");
@@ -404,16 +429,21 @@ const Calendar = () => {
             {formVisible && user && user?.role === "manager" && (
                 <div style={overlayStyle}>
                     <div style={modalStyle}>
-                        <h3 style={{ marginBottom: '1rem' }}>Create Time</h3>
+                        <h3 style={{ marginBottom: '1rem' }}>Create shift</h3>
 
                         {/* Form fields */}
                         <label style={labelStyle}>Person:
-                            <input
-                                type="text"
+                            <select
                                 value={formData.person}
                                 onChange={(e) => setFormData({ ...formData, person: e.target.value })}
                                 style={inputStyle}
-                            />
+                                required
+                            >
+                                <option value="" disabled>Select a person</option>
+                                {users.map(user => (
+                                    <option key={user._id} value={user.name}>{user.name}</option>
+                                ))}
+                            </select>
                         </label>
                         <label style={labelStyle}>Start:
                             <input
@@ -455,7 +485,7 @@ const Calendar = () => {
                                     setFormData({ person: '', start: '', end: '' });
                                     fetchShifts();
                                 } catch (error) {
-                                    alert('Failed to create Shift. In Roster returns.');
+                                    alert('Failed to create Shift. Please try again.');
                                     console.error(error);
                                 }
                             }}>
@@ -474,7 +504,7 @@ const Calendar = () => {
 
             {/* Calendar UI Layout */}
             <div style={styles.wrap}>
-                <div style={styles.left}>
+                <div style={{ ...styles.left, marginLeft: "10px" }}>
                     {/* Date selector (week-based) */}
                     <DayPilotNavigator
                         selectMode={"Week"}
@@ -488,7 +518,7 @@ const Calendar = () => {
                     {/* Show Create Shift button for managers */}
                     {user && user?.role === "manager" && (
                         <button
-                            style={{ ...buttonStyle, marginBottom: "1rem" }}
+                            style={{ ...buttonStyle, marginTop: "12px", width: "100%" }}
                             onClick={() => setFormVisible(true)}
                         >
                             Create Shift
@@ -497,88 +527,47 @@ const Calendar = () => {
                     {/* Swap requests list */}
                     <div>
                         <h4 style={{ marginTop: "1rem" }}>Swap Requests</h4>
+                        <ul style={{ listStyle: "none", padding: 0 }}>
+                            {swapRequests.map(req => (
+                                <li key={req.swap._id} style={{ marginBottom: "0.5rem" }}>
+                                    {req.swap.from} wants to swap shift on{" "}
+                                    {new Date(req.shift.start).toLocaleDateString()} <br />
+                                    <button onClick={() => approveSwap(req.shiftId, req.swap._id, "accept")}>
+                                        Accept
+                                    </button>
+                                    <button onClick={() => approveSwap(req.shiftId, req.swap._id, "reject")}>
+                                        Reject
+                                    </button>
+                                </li>
+                            ))}
+                            {swapRequests.length === 0 && (
+                                <li style={{ color: "#888" }}>No pending swap requests.</li>
+                            )}
 
-                        {swapRequests.length === 0 ? (
-                            <p style={{ color: "#9ca3af", margin: "0.5rem 0" }}>No pending swap requests.</p>
-                        ) : (
-                            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "12px" }}>
-                                {swapRequests.map((req) => {
-                                    const d = new Date(req.shift.start);
-                                    const dateStr = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-                                    const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-
-                                    return (
-                                        <li
-                                            key={req.swap._id}
-                                            style={{
-                                                background: "#fff",
-                                                border: "1px solid #e5e7eb",
-                                                borderRadius: "16px",
-                                                padding: "14px 16px",
-                                                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-                                            }}
-                                        >
-                                            {/* Header */}
-                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                                                <div>
-                                                    <div style={{ fontWeight: 600 }}>{req.swap.from}</div>
-                                                    <div style={{ color: "#6b7280", fontSize: ".9rem" }}>
-                                                        wants to swap shift on {dateStr} at {timeStr}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Actions */}
-                                            <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => approveSwap(req.shiftId, req.swap._id, "accept")}
-                                                    aria-label={`Approve swap request from ${req.swap.from}`}
-                                                    style={{
-                                                        borderRadius: 9999,
-                                                        padding: "8px 14px",
-                                                        border: "1px solid transparent",
-                                                        background: "#f97316", // orange
-                                                        color: "#fff",
-                                                        fontWeight: 600,
-                                                        cursor: "pointer",
-                                                        transition: "transform .04s ease, filter .2s ease",
-                                                    }}
-                                                    onMouseDown={(e) => (e.currentTarget.style.transform = "translateY(1px)")}
-                                                    onMouseUp={(e) => (e.currentTarget.style.transform = "translateY(0)")}
-                                                    onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
-                                                >
-                                                    Approve
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => approveSwap(req.shiftId, req.swap._id, "reject")}
-                                                    aria-label={`Reject swap request from ${req.swap.from}`}
-                                                    style={{
-                                                        borderRadius: 9999,
-                                                        padding: "8px 14px",
-                                                        border: "1px solid transparent",
-                                                        background: "#111827", // near-black
-                                                        color: "#fff",
-                                                        fontWeight: 600,
-                                                        cursor: "pointer",
-                                                        transition: "transform .04s ease, filter .2s ease",
-                                                    }}
-                                                    onMouseDown={(e) => (e.currentTarget.style.transform = "translateY(1px)")}
-                                                    onMouseUp={(e) => (e.currentTarget.style.transform = "translateY(0)")}
-                                                    onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
-                                                >
-                                                    Reject
-                                                </button>
-                                            </div>
+                            {(() => {
+                                const iter = new SwapIterator(swapRequests);
+                                const items = [];
+                                while (iter.hasNext()) {
+                                    const req = iter.next();
+                                    items.push(
+                                        <li key={req.swap._id} style={{ marginBottom: "0.5rem" }}>
+                                            {req.swap.from} wants to swap shift on{" "}
+                                            {new Date(req.shift.start).toLocaleDateString()}
+                                            <br />
+                                            <button onClick={() => approveSwap(req.shiftId, req.swap._id, "accept")}>
+                                                Accept
+                                            </button>
+                                            <button onClick={() => approveSwap(req.shiftId, req.swap._id, "reject")}>
+                                                Reject
+                                            </button>
                                         </li>
                                     );
-                                })}
-                            </ul>
-                        )}
-                    </div>
+                                }
+                                return items;
+                            })()}
 
+                        </ul>
+                    </div>
                 </div>
 
                 <div style={styles.main}>
@@ -597,8 +586,6 @@ const Calendar = () => {
                     )}
                 </div>
             </div>
-
-
         </div>
     );
 }
