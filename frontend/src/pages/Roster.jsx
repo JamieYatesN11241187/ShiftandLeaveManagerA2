@@ -141,6 +141,13 @@ const Calendar = () => {
                 } else if (user?.role === "worker") {
                     return [
                         {
+
+                            text: "Pick Up Shift",
+                            onClick: async args => {
+                                const confirmed = window.confirm("Do you want to pick up this shift?");
+                                if (!confirmed) return;
+                                await pickupShift(args.source.data.id);
+                            },
                             text: "Drop Shift",
                             onClick: async args => {
                                 const confirmed = window.confirm("Do you want to drop this shift?");
@@ -216,7 +223,26 @@ const Calendar = () => {
             }
         }
     };
+    const pickupShift = async (shiftId) => {
+        if (user?.role !== "worker") {
+            alert("Only workers can pick up shifts.");
+            return;
+        }
 
+        try {
+            await axiosInstance.put(
+                `/api/shifts/${shiftId}/pickup`,
+                {},
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+
+            alert("Shift picked up successfully.");
+            fetchShifts(); // refresh calendar
+        } catch (error) {
+            console.error("Failed to pick up shift:", error);
+            alert(error.response?.data?.message || "Failed to pick up shift.");
+        }
+    };
     // Fetch all shifts from the backend and map to DayPilot format
     const fetchShifts = async () => {
         try {
@@ -298,7 +324,7 @@ const Calendar = () => {
                         {/* Action buttons */}
                         <div style={{ marginTop: '1rem' }}>
                             <button
-                                style={{ ...buttonStyle, padding: '8px 16px'}}
+                                style={{ ...buttonStyle, padding: '8px 16px' }}
                                 onClick={async () => {
                                     if (!editFormData.person || !editFormData.start || !editFormData.end) {
                                         alert("Please fill in all fields.");
@@ -414,7 +440,7 @@ const Calendar = () => {
 
             {/* Calendar UI Layout */}
             <div style={styles.wrap}>
-                <div style={{...styles.left, marginLeft: "10px"}}>
+                <div style={{ ...styles.left, marginLeft: "10px" }}>
                     {/* Date selector (week-based) */}
                     <DayPilotNavigator
                         selectMode={"Week"}
@@ -428,7 +454,7 @@ const Calendar = () => {
                     {/* Show Create Shift button for managers */}
                     {user && user?.role === "manager" && (
                         <button
-                            style={{ ...buttonStyle, marginTop: "12px", width: "100%"}}
+                            style={{ ...buttonStyle, marginTop: "12px", width: "100%" }}
                             onClick={() => setFormVisible(true)}
                         >
                             Create Shift
