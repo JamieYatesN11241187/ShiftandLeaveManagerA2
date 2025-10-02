@@ -141,20 +141,21 @@ const Calendar = () => {
                 } else if (user?.role === "worker") {
                     return [
                         {
-
                             text: "Pick Up Shift",
                             onClick: async args => {
                                 const confirmed = window.confirm("Do you want to pick up this shift?");
                                 if (!confirmed) return;
                                 await pickupShift(args.source.data.id);
-                            },
+                            }, 
+                        },
+                        {
                             text: "Drop Shift",
                             onClick: async args => {
                                 const confirmed = window.confirm("Do you want to drop this shift?");
                                 if (!confirmed) return;
                                 await dropShift(args.source.data.id);
-                            }
-                        }
+                            },
+                        },
                     ];
                 } else {
                     return []; // no menu for other roles
