@@ -20,7 +20,6 @@ class LeaveRequestState {
         return null;
     }
 }
-
 // === Concrete States ===
 class PendingState extends LeaveRequestState {
     renderActions() {
@@ -78,7 +77,6 @@ class LeaveRequest {
         this.end = data.end;
         this.status = data.status;
         this.handleStatusUpdate = handleStatusUpdate;
-
         switch (this.status) {
             case "approved":
                 this.state = new ApprovedState(this);
@@ -129,7 +127,6 @@ const LeaveRequests = () => {
 
     useEffect(() => {
         if (!user?.token) return;
-
         const fetchData = async () => {
             try {
                 const [reqRes, profileRes] = await Promise.all([
