@@ -2,6 +2,8 @@ import { DayPilot, DayPilotCalendar, DayPilotNavigator } from "@daypilot/daypilo
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
+import SwapIterator from "../utils/SwapIterator";
+
 
 // Modal overlay styling
 const overlayStyle = {
@@ -541,6 +543,29 @@ const Calendar = () => {
                             {swapRequests.length === 0 && (
                                 <li style={{ color: "#888" }}>No pending swap requests.</li>
                             )}
+
+                            {(() => {
+                                const iter = new SwapIterator(swapRequests);
+                                const items = [];
+                                while (iter.hasNext()) {
+                                    const req = iter.next();
+                                    items.push(
+                                        <li key={req.swap._id} style={{ marginBottom: "0.5rem" }}>
+                                            {req.swap.from} wants to swap shift on{" "}
+                                            {new Date(req.shift.start).toLocaleDateString()}
+                                            <br />
+                                            <button onClick={() => approveSwap(req.shiftId, req.swap._id, "accept")}>
+                                                Accept
+                                            </button>
+                                            <button onClick={() => approveSwap(req.shiftId, req.swap._id, "reject")}>
+                                                Reject
+                                            </button>
+                                        </li>
+                                    );
+                                }
+                                return items;
+                            })()}
+
                         </ul>
                     </div>
                 </div>
