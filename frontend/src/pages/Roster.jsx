@@ -527,46 +527,82 @@ const Calendar = () => {
                     {/* Swap requests list */}
                     <div>
                         <h4 style={{ marginTop: "1rem" }}>Swap Requests</h4>
-                        <ul style={{ listStyle: "none", padding: 0 }}>
-                            {swapRequests.map(req => (
-                                <li key={req.swap._id} style={{ marginBottom: "0.5rem" }}>
-                                    {req.swap.from} wants to swap shift on{" "}
-                                    {new Date(req.shift.start).toLocaleDateString()} <br />
-                                    <button onClick={() => approveSwap(req.shiftId, req.swap._id, "accept")}>
-                                        Accept
-                                    </button>
-                                    <button onClick={() => approveSwap(req.shiftId, req.swap._id, "reject")}>
-                                        Reject
-                                    </button>
-                                </li>
-                            ))}
-                            {swapRequests.length === 0 && (
-                                <li style={{ color: "#888" }}>No pending swap requests.</li>
-                            )}
 
-                            {(() => {
-                                const iter = new SwapIterator(swapRequests);
-                                const items = [];
-                                while (iter.hasNext()) {
-                                    const req = iter.next();
-                                    items.push(
-                                        <li key={req.swap._id} style={{ marginBottom: "0.5rem" }}>
-                                            {req.swap.from} wants to swap shift on{" "}
-                                            {new Date(req.shift.start).toLocaleDateString()}
-                                            <br />
-                                            <button onClick={() => approveSwap(req.shiftId, req.swap._id, "accept")}>
-                                                Accept
-                                            </button>
-                                            <button onClick={() => approveSwap(req.shiftId, req.swap._id, "reject")}>
-                                                Reject
-                                            </button>
-                                        </li>
-                                    );
-                                }
-                                return items;
-                            })()}
+                        {swapRequests.length === 0 ? (
+                            <p style={{ color: "#888", margin: "0.5rem 0" }}>No pending swap requests.</p>
+                        ) : (
+                            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
+                                {(() => {
+                                    const styles = {
+                                        card: {
+                                            background: "#fff",
+                                            border: "1px solid #e5e7eb",
+                                            borderRadius: 16,
+                                            padding: "14px 16px",
+                                            boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                                        },
+                                        title: { fontWeight: 600 },
+                                        sub: { color: "#6b7280", fontSize: ".9rem" },
+                                        actions: { display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" },
+                                        pill: {
+                                            borderRadius: 9999,
+                                            padding: "8px 14px",
+                                            border: "1px solid transparent",
+                                            color: "#fff",
+                                            fontWeight: 600,
+                                            cursor: "pointer",
+                                            transition: "transform .04s ease, filter .2s ease",
+                                        },
+                                        approve: { background: "#f97316" }, // orange
+                                        reject: { background: "#111827" },  // black
+                                    };
 
-                        </ul>
+                                    const iter = new SwapIterator(swapRequests);
+                                    const items = [];
+
+                                    while (iter.hasNext()) {
+                                        const req = iter.next();
+                                        const start = req?.shift?.start ? new Date(req.shift.start) : null;
+                                        const dateStr = start
+                                            ? start.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })
+                                            : "Unknown date";
+
+                                        items.push(
+                                            <li key={req.swap._id} style={styles.card}>
+                                                <div style={styles.title}>{req.swap.from}</div>
+                                                <div style={styles.sub}>wants to swap shift on {dateStr}</div>
+
+                                                <div style={styles.actions}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => approveSwap(req.shiftId, req.swap._id, "accept")}
+                                                        style={{ ...styles.pill, ...styles.approve }}
+                                                        onMouseDown={(e) => (e.currentTarget.style.transform = "translateY(1px)")}
+                                                        onMouseUp={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+                                                        onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+                                                    >
+                                                        Approve
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => approveSwap(req.shiftId, req.swap._id, "reject")}
+                                                        style={{ ...styles.pill, ...styles.reject }}
+                                                        onMouseDown={(e) => (e.currentTarget.style.transform = "translateY(1px)")}
+                                                        onMouseUp={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+                                                        onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            </li>
+                                        );
+                                    }
+
+                                    return items;
+                                })()}
+                            </ul>
+                        )}
                     </div>
                 </div>
 
