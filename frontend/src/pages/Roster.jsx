@@ -3,7 +3,12 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
 import SwapIterator from "../utils/SwapIterator";
-
+import {
+    PickupShiftCommand,
+    DropShiftCommand,
+    RequestSwapCommand,
+    ApproveSwapCommand
+} from "../utils/Commands";
 
 // Modal overlay styling
 const overlayStyle = {
@@ -220,18 +225,22 @@ const Calendar = () => {
     };
 
     const dropShift = async (shiftId) => {
-        if (!user || user?.role !== "worker") {
-            alert("Only workers can drop their own shifts.");
-            return;
-        }
-
+        /*  if (!user || user?.role !== "worker") {
+              alert("Only workers can drop their own shifts.");
+              return;
+          }
+  
+          try {
+              await axiosInstance.put(
+                  `/api/shifts/${shiftId}/drop`,
+                  {}, // no body needed
+                  { headers: { Authorization: `Bearer ${user.token}` } }
+              );
+  
+              alert("Shift dropped successfully."); */
         try {
-            await axiosInstance.put(
-                `/api/shifts/${shiftId}/drop`,
-                {}, // no body needed
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
-
+            const cmd = new DropShiftCommand(shiftId, user);
+            await cmd.execute();
             alert("Shift dropped successfully.");
             fetchShifts(); // Refresh calendar/shift list
         } catch (error) {
@@ -245,6 +254,9 @@ const Calendar = () => {
         }
     };
 
+
+    // Fetch all swap requests
+
     const fetchSwaps = async () => {
         try {
             const response = await axiosInstance.get('/api/swaps/me', {
@@ -257,27 +269,57 @@ const Calendar = () => {
         }
     };
 
+
+
+    // A decorator to add display text + colors to shifts
+    function decorateShift(shift) {
+        return {
+            ...shift,
+            text: shift.person === "unassigned" ? "[Available for pickup]" : shift.person,
+            backColor: shift.person === "unassigned" ? "#ffcc00" : "#6aa84f"
+        };
+    }
+
+    //const fetchSwaps = async () => {
+    const requestSwap = async (shiftId) => {
+        try {
+            /* const response = await axiosInstance.get('/api/swaps/me', {
+                 headers: { Authorization: `Bearer ${user.token}` }
+             });
+             setSwapRequests(response.data || []); */
+            const cmd = new RequestSwapCommand(shiftId, user);
+            await cmd.execute();
+            alert("Swap request sent.");
+        } catch (error) {
+            /* console.error("Failed to fetch swap requests:", error);
+             setSwapRequests([]); */
+            alert("Failed to request swap.");
+        }
+    };
+
     // Approve/reject a swap
     const approveSwap = async (shiftId, swapId, action) => {
         try {
-            const response = await axiosInstance.put(
-                `/api/swaps/${shiftId}/approval`,
-                { swapId, action },
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
-
-            const updatedShift = response.data.shift;
-
-            setShifts(prev =>
-                prev.map(s => (s.id === updatedShift._id ? {
-                    id: updatedShift._id,
-                    text: updatedShift.person || "Unassigned",
-                    start: updatedShift.start,
-                    end: updatedShift.end,
-                    backColor: "#6aa84f"
-                } : s))
-            );
-
+            /*  const response = await axiosInstance.put(
+                  `/api/swaps/${shiftId}/approval`,
+                  { swapId, action },
+                  { headers: { Authorization: `Bearer ${user.token}` } }
+              );
+  
+              const updatedShift = response.data.shift;
+  
+              setShifts(prev =>
+                  prev.map(s => (s.id === updatedShift._id ? {
+                      id: updatedShift._id,
+                      text: updatedShift.person || "Unassigned",
+                      start: updatedShift.start,
+                      end: updatedShift.end,
+                      backColor: "#6aa84f"
+                  } : s))
+              ); */
+            const cmd = new ApproveSwapCommand(shiftId, swapId, action, user);
+            await cmd.execute();
+            alert(`Swap ${action}ed.`);
             fetchSwaps();
         } catch (error) {
             console.error(`Failed to ${action} swap:`, error);
@@ -285,23 +327,27 @@ const Calendar = () => {
     };
 
     const pickupShift = async (shiftId) => {
-        if (user?.role !== "worker") {
-            alert("Only workers can pick up shifts.");
-            return;
-        }
-
+        /* if (user?.role !== "worker") {
+             alert("Only workers can pick up shifts.");
+             return;
+         }
+ 
+         try {
+             await axiosInstance.put(
+                 `/api/shifts/${shiftId}/pickup`,
+                 {},
+                 { headers: { Authorization: `Bearer ${user.token}` } }
+             );
+ 
+             alert("Shift picked up successfully."); */
         try {
-            await axiosInstance.put(
-                `/api/shifts/${shiftId}/pickup`,
-                {},
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
-
+            const cmd = new PickupShiftCommand(shiftId, user);
+            await cmd.execute();
             alert("Shift picked up successfully.");
             fetchShifts(); // refresh calendar
         } catch (error) {
             console.error("Failed to pick up shift:", error);
-            alert(error.response?.data?.message || "Failed to pick up shift.");
+            alert("Failed to pick up shift.");
         }
     };
     // Fetch all shifts from the backend and map to DayPilot format
