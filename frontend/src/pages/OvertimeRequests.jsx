@@ -18,77 +18,124 @@ const formatShift = (shiftString) => {
     return `${date} ${startTime} - ${endTime}`;
 };
 
-/**
- *Row component for a single overtime request.
- *Handles both employee and manager views:
- *Employee: can delete their own pending/approved requests
- *Manager: can approve/reject with optional comments
- */
-const OvertimeRow = ({ req, user, onDelete, onStatusUpdate }) => {
+
+const PendingManagerActions = ({ onApprove, onReject }) => {
     const [comment, setComment] = useState("");
-
     return (
-        <tr className="text-center border-b">
-            <td className="p-3">{req.person}</td>
-            <td className="p-3">{formatShift(req.shiftTimings)}</td>
-            <td className="p-3">{req.hoursRequested}</td>
-            <td className="p-3">{req.reason}</td>
-            <td className="p-3">
-                <span
-                    className={`px-2 py-1 rounded text-xs font-medium ${
-                        req.status === "approved"
-                            ? "bg-green-500 text-white"
-                            : req.status === "pending"
-                            ? "bg-orange-400 text-white"
-                            : "bg-red-500 text-white"
-                    }`}
-                >
-                    {req.status}
-                </span>
-            </td>
-
-            {user.role !== "manager" && (
-                <td className="p-3">
-                    {(req.status === "approved" || req.status === "pending") && (
-                        <button onClick={() => onDelete(req._id)} className={btnDanger}>
-                            Delete
-                        </button>
-                    )}
-                </td>
-            )}
-
-            {user.role === "manager" && (
-                <td className="p-3 space-y-2">
-                    {req.status === "pending" && (
-                        <>
-                            <div className="space-x-2">
-                                <button
-                                    onClick={() => onStatusUpdate(req._id, "approved", comment)}
-                                    className={btnPrimary}
-                                >
-                                    Approve
-                                </button>
-                                <button
-                                    onClick={() => onStatusUpdate(req._id, "rejected", comment)}
-                                    className={btnDanger}
-                                >
-                                    Reject
-                                </button>
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Comment..."
-                                value={comment}
-                                onChange={(e) => setComment(e.target.value)}
-                                className={input}
-                            />
-                        </>
-                    )}
-                </td>
-            )}
-        </tr>
+        <div className="space-y-2">
+            <div className="space-x-2">
+                <button onClick={() => onApprove(comment)} className={btnPrimary}>
+                    Approve
+                </button>
+                <button onClick={() => onReject(comment)} className={btnDanger}>
+                    Reject
+                </button>
+            </div>
+            <input
+                type="text"
+                placeholder="Comment..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className={input}
+            />
+        </div>
     );
 };
+
+
+//=== State Base ===
+class OvertimeRequestState {
+    constructor(context) {
+        this.context = context;
+    }
+    approve() {}
+    reject() {}
+    renderActions() {
+        return null;
+    }
+}
+
+// === Concrete States ===
+class PendingState extends OvertimeRequestState {
+    renderActions() {
+        return (
+            <PendingManagerActions
+                onApprove={(comment) => this.approve(comment)}
+                onReject={(comment) => this.reject(comment)}
+            />
+        );
+    }
+    approve(comment) {
+        this.context.transitionTo(new ApprovedState(this.context), comment);
+    }
+    reject(comment) {
+        this.context.transitionTo(new RejectedState(this.context), comment);
+    }
+}
+class ApprovedState extends OvertimeRequestState {
+    renderActions() {
+        return (
+            <button onClick={() => this.reject()} className={btnDanger}>
+                Reject
+            </button>
+        );
+    }
+    reject() {
+        this.context.transitionTo(new RejectedState(this.context));
+    }
+}
+
+class RejectedState extends OvertimeRequestState {
+    renderActions() {
+        return (
+            <button onClick={() => this.approve()} className={btnPrimary}>
+                Approve
+            </button>
+        );
+    }
+    approve() {
+        this.context.transitionTo(new ApprovedState(this.context));
+    }
+}
+
+// === Context ===
+class OvertimeRequest {
+    constructor(data, handleStatusUpdate) {
+        this.id = data._id;
+        this.person = data.person;
+        this.shiftTimings = data.shiftTimings;
+        this.hoursRequested = data.hoursRequested;
+        this.reason = data.reason;
+        this.status = data.status;
+        this.handleStatusUpdate = handleStatusUpdate;
+
+        switch (this.status) {
+            case "approved":
+                this.state = new ApprovedState(this);
+                break;
+            case "rejected":
+                this.state = new RejectedState(this);
+                break;
+            default:
+                this.state = new PendingState(this);
+        }
+    }
+    transitionTo(state, comment) {
+        this.state = state;
+        const newStatus = this.getStatus();
+        this.status = newStatus; // sync local status
+        this.handleStatusUpdate(this.id, newStatus, comment);
+    }
+    getStatus() {
+        if (this.state instanceof ApprovedState) return "approved";
+        if (this.state instanceof RejectedState) return "rejected";
+        return "pending";
+    }
+
+    renderActions() {
+        return this.state.renderActions();
+    }
+}
 
 const formatShiftOption = (shift) => {
     const start = new Date(shift.start);
@@ -263,7 +310,7 @@ const OvertimeRequests = () => {
             alert("Failed to delete request.");
         }
     };
-    const formatDate = (d) => new Date(d).toLocaleDateString("en-GB");
+
     return (
         <div className="bg-gray-100 min-h-screen p-6">
             <div className="max-w-4xl mx-auto">
@@ -294,16 +341,50 @@ const OvertimeRequests = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                requests.map((req) => (
-                                    <OvertimeRow
-                                        key={req._id}
-                                        req={req}
-                                        user={user}
-                                        onDelete={handleDelete}
-                                        onStatusUpdate={handleStatusUpdate}
-                                        formatDate={formatDate}
-                                    />
-                                ))
+                                requests.map((req) => {
+                                    const overtimeRequest = new OvertimeRequest(req, handleStatusUpdate);
+                                    return (
+                                        <tr key={overtimeRequest.id} className="text-center border-b">
+                                            <td className="p-3">{overtimeRequest.person}</td>
+                                            <td className="p-3">{formatShift(overtimeRequest.shiftTimings)}</td>
+                                            <td className="p-3">{overtimeRequest.hoursRequested}</td>
+                                            <td className="p-3">{overtimeRequest.reason}</td>
+                                            <td className="p-3">
+                                                <span
+                                                    className={`px-2 py-1 rounded text-xs font-medium ${
+                                                        overtimeRequest.getStatus() === "approved"
+                                                            ? "bg-green-500 text-white"
+                                                            : overtimeRequest.getStatus() === "pending"
+                                                            ? "bg-orange-400 text-white"
+                                                            : "bg-red-500 text-white"
+                                                    }`}
+                                                >
+                                                    {overtimeRequest.getStatus()}
+                                                </span>
+                                            </td>
+
+                                            {user.role !== "manager" && (
+                                                <td className="p-3">
+                                                    {(overtimeRequest.getStatus() === "approved" ||
+                                                        overtimeRequest.getStatus() === "pending") && (
+                                                        <button
+                                                            onClick={() => handleDelete(overtimeRequest.id)}
+                                                            className={btnDanger}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            )}
+
+                                            {user.role === "manager" && (
+                                                <td className="p-3 space-y-2">
+                                                    {overtimeRequest.renderActions()}
+                                                </td>
+                                            )}
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>

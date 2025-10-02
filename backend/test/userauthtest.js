@@ -1,9 +1,9 @@
 const chai = require('chai');
 const sinon = require('sinon');
 const mongoose = require('mongoose');
-const User = require('../models/User'); 
-require('dotenv').config(); 
-const { registerUser, loginUser, getProfile, updateUserProfile,getAllUsers} = require('../controllers/authController');
+const User = require('../models/User');
+require('dotenv').config();
+const { registerUser, loginUser, getProfile, updateUserProfile, getAllUsers } = require('../controllers/authController');
 const { expect } = chai;
 
 describe('register User Function Test', () => {
@@ -63,8 +63,8 @@ describe('register User Function Test', () => {
     // Assertions
     expect(findStub.calledOnce).to.be.true;
     expect(res.status.calledWith(400)).to.be.true;
-    expect(res.json.calledWith({ message: 'User already exists'})).to.be.true;
-  });  
+    expect(res.json.calledWith({ message: 'User already exists' })).to.be.true;
+  });
 
   it('Create fail if person less than 14 years old', async () => {
     // Mock request body
@@ -97,7 +97,7 @@ describe('register User Function Test', () => {
       message: 'Apologies, but you are too young to work under Australian Compliance',
     });
   });
-  
+
   it('should return 500 if an error occurs', async () => {
     // Simulate error during save
     const findStub = sinon.stub(User, 'findOne').resolves(null);
@@ -121,7 +121,7 @@ describe('register User Function Test', () => {
     await registerUser(req, res);
 
     expect(res.status.calledWith(500)).to.be.true;
-    expect(res.json.calledWithMatch({message: 'DB Error'})).to.be.true;
+    expect(res.json.calledWithMatch({ message: 'DB Error' })).to.be.true;
   });
 });
 
@@ -130,28 +130,28 @@ describe('Get User Profile Function Test', () => {
 
   it('should get user profile successfully', async () => {
     // Mock request body
-    const user = 
-      {
+    const user =
+    {
       _id: new mongoose.Types.ObjectId(),
       name: "Jack Smith",
       email: "jack@test.com",
       password: "password123",
       role: "worker",
-      address: "123 Main St, Sydney, Australia",
+      dob: new Date("2000-08-11T08:00:00Z"),
     };
-  const findStub = sinon.stub(User, 'findById').resolves(user);
-  const req = 
-  {
-    user: {
-       id: user._id.toString(),
+    const findStub = sinon.stub(User, 'findById').resolves(user);
+    const req =
+    {
+      user: {
+        id: user._id.toString(),
       }
-  };
-  
-  // Mock response object
-  const res = {
-    status: sinon.stub().returnsThis(),
-    json: sinon.spy(),
-  };
+    };
+
+    // Mock response object
+    const res = {
+      status: sinon.stub().returnsThis(),
+      json: sinon.spy(),
+    };
 
     // Call controller
     await getProfile(req, res);
@@ -159,8 +159,8 @@ describe('Get User Profile Function Test', () => {
     // Assertions
     expect(findStub.calledOnce).to.be.true;
     expect(res.status.calledWith(200)).to.be.true;
-    });
   });
+});
 
 describe('updateUserProfile', () => {
   afterEach(() => sinon.restore()); // Restore all stubs/spies after each test
@@ -171,7 +171,7 @@ describe('updateUserProfile', () => {
       name: "Alice Johnson",
       email: "alice@test.com",
       role: "worker",
-      address: "123 Main St, Sydney, Australia",
+      dob: new Date("2000-08-11T08:00:00Z"),
       save: sinon.stub().resolvesThis(),
 
     };
@@ -179,7 +179,7 @@ describe('updateUserProfile', () => {
 
     const req = {
       user: { id },
-      body: {name: "New Name", email: "alice@test.com",role: "worker", address: "New Address", },
+      body: { name: "New Name", email: "alice@test.com", role: "worker" },
     };
 
     const res = {
@@ -189,34 +189,33 @@ describe('updateUserProfile', () => {
 
     await updateUserProfile(req, res);
 
-      
+
     // Assertions
     expect(findByIdStub.calledOnceWith(id)).to.be.true;
-    expect(res.json.firstCall.args[0].address).to.equal('New Address');
     expect(res.json.firstCall.args[0].name).to.equal('New Name'); // Ensure name is updated
     expect(existingUser.save.calledOnce).to.be.true;
     expect(res.status.called).to.be.false;
     expect(res.json.calledOnce).to.be.true;
-    });
+  });
 
-    it('return error user not found', async () => {
+  it('return error user not found', async () => {
     const id = new mongoose.Types.ObjectId().toString();
     const existingUser = {
       _id: id,
       name: "Alice Johnson",
       email: "alice@test.com",
       role: "worker",
-      address: "123 Main St, Sydney, Australia",
+      dob: new Date("2000-08-11T08:00:00Z"),
       save: sinon.stub().resolvesThis(),
 
     };
-    
+
     const findByIdStub = sinon.stub(User, 'findById').resolves(null);
 
 
     const req = {
       user: { id },
-      body: {name: "New Name", email: "alice@test.com",role: "worker", address: "New Address", },
+      body: { name: "New Name", email: "alice@test.com", role: "worker" },
     };
 
     const res = {
@@ -225,33 +224,33 @@ describe('updateUserProfile', () => {
     };
 
     await updateUserProfile(req, res);
-    
-      
+
+
     // Assertions
     expect(findByIdStub.calledOnceWith(id)).to.be.true;
     expect(res.status.calledWith(404)).to.be.true;
     expect(res.json.calledWith({ message: 'User not found' })).to.be.true;
 
-    });
+  });
 
-    it('should return 500 if database error occurs', async () => {
+  it('should return 500 if database error occurs', async () => {
     const id = new mongoose.Types.ObjectId().toString();
     const existingUser = {
       _id: id,
       name: "Alice Johnson",
       email: "alice@test.com",
       role: "worker",
-      address: "123 Main St, Sydney, Australia",
+      dob: new Date("2000-08-11T08:00:00Z"),
       save: sinon.stub().resolvesThis(),
 
     };
-    
-    const findByIdStub =  sinon.stub(User, 'findById').throws(new Error('DB Error'));
+
+    const findByIdStub = sinon.stub(User, 'findById').throws(new Error('DB Error'));
 
 
     const req = {
       user: { id },
-      body: {name: "New Name", email: "alice@test.com",role: "worker", address: "New Address", },
+      body: { name: "New Name", email: "alice@test.com", role: "worker" },
     };
 
     const res = {
@@ -260,22 +259,22 @@ describe('updateUserProfile', () => {
     };
 
     await updateUserProfile(req, res);
-    
-      
+
+
     // Assertions
     expect(res.status.calledWith(500)).to.be.true;
     expect(res.json.calledWith({ message: 'DB Error' })).to.be.true;
 
-    });
-
   });
+
+});
 
 describe('login User Function Test', () => {
   afterEach(() => sinon.restore()); // Restore all stubs/spies after each test
   it('should login user successfully', async () => {
     const bcrypt = require('bcrypt'); // Assuming bcrypt is imported
 
-  // Stub bcrypt.compare to always return true
+    // Stub bcrypt.compare to always return true
     // Mock request body
     const req = {
       body: {
@@ -300,7 +299,7 @@ describe('login User Function Test', () => {
 
     // Call controller
     await loginUser(req, res);
-    
+
     // Assertions
     expect(findStub.calledOnce).to.be.true;
     expect(res.status.calledWith(200)).to.be.true;
@@ -310,10 +309,10 @@ describe('login User Function Test', () => {
       role: req.body.role
     });
   });
-    it('should return 401 error for invalid credentials', async () => {
+  it('should return 401 error for invalid credentials', async () => {
     const bcrypt = require('bcrypt'); // Assuming bcrypt is imported
 
-  // Stub bcrypt.compare to always return true
+    // Stub bcrypt.compare to always return true
     // Mock request body
     const req = {
       body: {
@@ -341,6 +340,6 @@ describe('login User Function Test', () => {
     // Assertions
     expect(findStub.calledOnce).to.be.true;
     expect(res.status.calledWith(401)).to.be.true;
-    expect(res.json.firstCall.args[0]).to.include({message: 'Invalid email or password'});
+    expect(res.json.firstCall.args[0]).to.include({ message: 'Invalid email or password' });
   });
 });

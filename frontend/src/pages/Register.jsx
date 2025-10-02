@@ -84,7 +84,7 @@ const Register = () => {
           onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
           className="w-full mb-4 p-2 border rounded"
         />
-        <button type="submit" className="w-full bg-green-600 text-white p-2 rounded">
+        <button type="submit" className="w-full bg-orange-400 text-white p-2 rounded">
           Register
         </button>
       </form>
