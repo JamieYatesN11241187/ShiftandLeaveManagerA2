@@ -1,8 +1,13 @@
 const Shift = require('../models/Shift'); // Import the Shift model
 const User = require("../models/User");
+const ShiftService = require("../services/ShiftService");
+const ComplianceDecorator = require("../services/ComplianceDecorator");
+
+const shiftService = new ComplianceDecorator(new ShiftService());
+
 
 // Create a new shift
-exports.createShift = async (req, res) => {
+/*exports.createShift = async (req, res) => {
   try {
       if(req.body.person){
         const { person, start, end } = req.body; // Destructure fields from request body
@@ -23,7 +28,7 @@ exports.createShift = async (req, res) => {
     // Return error response in case of failure
     res.status(500).json({ message: 'Failed to create shift.', error: error.message });
   }
-};
+}; */
 
 // Get all shifts
 exports.getShifts = async (req, res) => {
@@ -43,7 +48,9 @@ exports.getUserShifts = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch shifts', error: error.message });
   }
 };
-exports.updateShift = async (req, res) => {
+
+
+/*exports.updateShift = async (req, res) => {
   const { id } = req.params; // Extract shift ID from route parameters
   const { person, start, end } = req.body; // Extract updated data from request body
 
@@ -65,7 +72,28 @@ exports.updateShift = async (req, res) => {
     //console.error("Update error:", error);
     res.status(500).json({ message: 'Failed to update shift', error: error.message });
   }
+}; */
+
+exports.createShift = async (req, res) => {
+  try {
+    const saved = await shiftService.createShift(req.body);
+    res.json(saved);
+  } catch (e) {
+    const status = (e.code === "MAX_DURATION" || e.code === "MIN_AGE") ? 400 : 500;
+    res.status(status).json({ message: e.message });
+  }
 };
+
+exports.updateShift = async (req, res) => {
+  try {
+    const updated = await shiftService.updateShift(req.params.id, req.body);
+    res.json(updated);
+  } catch (e) {
+    const status = (e.code === "MAX_DURATION" || e.code === "MIN_AGE") ? 400 : 500;
+    res.status(status).json({ message: e.message });
+  }
+};
+
 
 // Delete a shift by ID
 exports.deleteShift = async (req, res) => {

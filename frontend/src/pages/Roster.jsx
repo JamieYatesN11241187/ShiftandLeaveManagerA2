@@ -233,6 +233,7 @@ const Calendar = () => {
             fetchShifts(); // Refresh calendar/shift list
         } catch (error) {
             console.error("Failed to drop shift:", error);
+            alert("Failed to drop shift.");
 
             if (error.response && error.response.data && error.response.data.message) {
                 alert(error.response.data.message);
@@ -253,6 +254,7 @@ const Calendar = () => {
             setSwapRequests(response.data || []);
         } catch (error) {
             console.error("Failed to fetch swap requests:", error);
+            alert('Failed to fetch swap requests. Please try again.');
             setSwapRequests([]);
         }
     };
@@ -289,6 +291,7 @@ const Calendar = () => {
             fetchSwaps();
         } catch (error) {
             console.error(`Failed to ${action} swap:`, error);
+            alert(`Failed to ${action} swap.`);
         }
     };
 
@@ -332,6 +335,7 @@ const Calendar = () => {
             setShifts(mappedShifts);
         } catch (error) {
             console.error("Failed to fetch shifts:", error);
+            alert('Failed to fetch shifts. Please try again.');
             setShifts([]);
         }
     };
@@ -598,7 +602,6 @@ const Calendar = () => {
                                             </li>
                                         );
                                     }
-
                                     return items;
                                 })()}
                             </ul>
